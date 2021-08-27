@@ -1,0 +1,18 @@
+# Copyright 2021 dom
+# See LICENSE file for licensing details.
+
+# For a complete list of supported options, see:
+# https://discourse.charmhub.io/t/charm-metadata-v2/3674/15
+name: tensorboard-controller
+display-name: Kubeflow Tensorboard Controller
+description: Kubeflow Tensorboard Controller
+summary: Kubeflow Tensorboard Controller
+maintainers: [Juju Developers <juju@lists.ubuntu.com>]
+tags: [ai, bigdata, kubeflow, machine-learning, tensorflow]
+series: [kubernetes]
+  
+resources:
+  oci-image:
+    type: oci-image
+    description: OCI image for httpbin (kennethreitz/httpbin)
+    upstream-source: public.ecr.aws/j1r0q0g6/notebooks/tensorboard-controller:v1.4-rc.0

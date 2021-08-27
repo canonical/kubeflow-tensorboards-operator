@@ -1,0 +1,9 @@
+options:
+  leader-election:
+    type: boolean
+    default: false
+    description: Enable leader election
+  port:
+    type: int
+    default: 9443
+    description: HTTP port
