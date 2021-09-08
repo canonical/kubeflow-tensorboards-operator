@@ -7,8 +7,7 @@ import yaml
 from oci_image import OCIImageResource, OCIImageResourceError
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
-
+from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
 
 
 class Operator(CharmBase):
@@ -51,7 +50,13 @@ class Operator(CharmBase):
                                 {
                                     "apiGroups": ["apps"],
                                     "resources": ["deployments"],
-                                    "verbs": ["create", "get", "list", "update", "watch"],
+                                    "verbs": [
+                                        "create",
+                                        "get",
+                                        "list",
+                                        "update",
+                                        "watch",
+                                    ],
                                 },
                                 {
                                     "apiGroups": [""],
@@ -61,17 +66,37 @@ class Operator(CharmBase):
                                 {
                                     "apiGroups": [""],
                                     "resources": ["services"],
-                                    "verbs": ["create", "get", "list", "update", "watch"],
+                                    "verbs": [
+                                        "create",
+                                        "get",
+                                        "list",
+                                        "update",
+                                        "watch",
+                                    ],
                                 },
                                 {
                                     "apiGroups": ["networking.istio.io"],
                                     "resources": ["virtualservices"],
-                                    "verbs": ["get", "list", "create", "update", "watch"],
+                                    "verbs": [
+                                        "get",
+                                        "list",
+                                        "create",
+                                        "update",
+                                        "watch",
+                                    ],
                                 },
                                 {
                                     "apiGroups": ["tensorboard.kubeflow.org"],
                                     "resources": ["tensorboards"],
-                                    "verbs": ["get", "list", "create", "delete", "patch", "update", "watch"],
+                                    "verbs": [
+                                        "get",
+                                        "list",
+                                        "create",
+                                        "delete",
+                                        "patch",
+                                        "update",
+                                        "watch",
+                                    ],
                                 },
                                 {
                                     "apiGroups": ["tensorboard.kubeflow.org"],
