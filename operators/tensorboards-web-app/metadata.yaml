@@ -1,7 +1,7 @@
-name: kubeflow-tensorboards
-display-name: Kubeflow Tensorboards
-summary: Kubeflow Tensorboards
-description: Kubeflow Tensorboards
+name: tensorboards-web-app
+display-name: Kubeflow Tensorboards Web App
+summary: Kubeflow Tensorboards Web App
+description: Kubeflow Tensorboards Web App
 maintainers: [Juju Developers <juju@lists.ubuntu.com>]
 tags: [ai, bigdata, kubeflow, machine-learning, tensorflow]
 series: [kubernetes]
@@ -10,7 +10,7 @@ resources:
     type: oci-image
     description: 'Backing OCI image'
     auto-fetch: true
-    upstream-source: public.ecr.aws/j1r0q0g6/notebooks/tensorboards-web-app:v1.3.0-rc.1
+    upstream-source: public.ecr.aws/j1r0q0g6/notebooks/tensorboards-web-app:v1.4-rc.0
 requires:
   ingress:
     interface: ingress

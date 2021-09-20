@@ -48,7 +48,7 @@ class Operator(CharmBase):
             self.interfaces["ingress"].send_data(
                 {
                     "prefix": "/tensorboards",
-                    "rewrite": "/tensorboards",
+                    "rewrite": "/",
                     "service": self.model.app.name,
                     "port": self.model.config["port"],
                 }
@@ -114,6 +114,8 @@ class Operator(CharmBase):
                             "USERID_HEADER": "kubeflow-userid",
                             "USERID_PREFIX": "",
                             "APP_PREFIX": "/tensorboards",
+                            "APP_SECURE_COOKIES": str(config["secure-cookies"]),
+                            "BACKEND_MODE": config["backend-mode"],
                         },
                         "ports": [{"name": "http", "containerPort": config["port"]}],
                     }
