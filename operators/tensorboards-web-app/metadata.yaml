@@ -1,3 +1,6 @@
+# Copyright 2021 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 name: tensorboards-web-app
 display-name: Kubeflow Tensorboards Web App
 summary: Kubeflow Tensorboards Web App

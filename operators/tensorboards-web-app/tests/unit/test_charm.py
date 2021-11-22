@@ -1,3 +1,6 @@
+# Copyright 2021 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 import pytest
 
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
@@ -13,7 +16,7 @@ def harness():
 
 
 def test_not_leader(harness):
-    harness.begin()
+    harness.begin_with_initial_hooks()
     assert isinstance(harness.charm.model.unit.status, WaitingStatus)
 
 
