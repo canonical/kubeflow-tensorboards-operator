@@ -1,8 +1,6 @@
-# Copyright 2021 dom
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-# For a complete list of supported options, see:
-# https://discourse.charmhub.io/t/charm-metadata-v2/3674/15
 name: tensorboard-controller
 display-name: Kubeflow Tensorboard Controller
 description: Kubeflow Tensorboard Controller

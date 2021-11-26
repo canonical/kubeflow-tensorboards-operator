@@ -49,6 +49,8 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
             provider: microk8s
+            channel: 1.21/stable
+            charmcraft-channel: latest/candidate
       - name: Run test
         run: |
           tox -e integration
