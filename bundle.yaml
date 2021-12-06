@@ -1,0 +1,9 @@
+name: kubeflow-tensorboard
+bundle: kubernetes
+applications:
+  tensorboard-controller:
+    charm: ch:tensorboard-controller
+    scale: 1
+  tensorboards-web-app:
+    charm: ch:tensorboards-web-app
+    scale: 1
