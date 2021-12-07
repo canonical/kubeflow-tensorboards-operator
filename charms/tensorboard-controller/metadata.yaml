@@ -1,14 +1,8 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
-
 name: tensorboard-controller
-display-name: Kubeflow Tensorboard Controller
 description: Kubeflow Tensorboard Controller
 summary: Kubeflow Tensorboard Controller
-maintainers: [Juju Developers <juju@lists.ubuntu.com>]
-tags: [ai, bigdata, kubeflow, machine-learning, tensorflow]
-series: [kubernetes]
-  
 resources:
   oci-image:
     type: oci-image

@@ -3,7 +3,9 @@ bundle: kubernetes
 applications:
   tensorboard-controller:
     charm: ch:tensorboard-controller
+    channel: latest/edge
     scale: 1
   tensorboards-web-app:
     charm: ch:tensorboards-web-app
+    channel: latest/edge
     scale: 1
