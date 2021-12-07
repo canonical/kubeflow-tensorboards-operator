@@ -3,6 +3,7 @@
 name: tensorboard-controller
 description: Kubeflow Tensorboard Controller
 summary: Kubeflow Tensorboard Controller
+series: [kubernetes]
 resources:
   oci-image:
     type: oci-image
