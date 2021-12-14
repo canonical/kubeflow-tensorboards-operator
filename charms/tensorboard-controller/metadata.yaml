@@ -4,9 +4,6 @@ name: tensorboard-controller
 description: Kubeflow Tensorboard Controller
 summary: Kubeflow Tensorboard Controller
 series: [kubernetes]
-deployment:
-  type: stateless
-  service: omit
 resources:
   oci-image:
     type: oci-image
