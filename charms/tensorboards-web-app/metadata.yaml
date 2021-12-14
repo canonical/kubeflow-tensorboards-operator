@@ -4,9 +4,6 @@ name: tensorboards-web-app
 summary: Kubeflow Tensorboards Web App
 description: Kubeflow Tensorboards Web App
 series: [kubernetes]
-deployment:
-  type: stateless
-  service: omit
 resources:
   oci-image:
     type: oci-image
