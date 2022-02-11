@@ -3,6 +3,7 @@
 name: tensorboards-web-app
 summary: Kubeflow Tensorboards Web App
 description: Kubeflow Tensorboards Web App
+min-juju-version: "2.9.0"
 series: [kubernetes]
 resources:
   oci-image:

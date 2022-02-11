@@ -3,6 +3,7 @@
 name: tensorboard-controller
 description: Kubeflow Tensorboard Controller
 summary: Kubeflow Tensorboard Controller
+min-juju-version: "2.9.0"
 series: [kubernetes]
 resources:
   oci-image:
