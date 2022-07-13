@@ -2,3 +2,4 @@ build/
 .tox/
 __pycache__
 *.charm
+.idea

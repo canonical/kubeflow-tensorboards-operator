@@ -18,9 +18,9 @@ class CheckFailed(Exception):
     def __init__(self, msg, status_type=None):
         super().__init__()
 
-        self.msg = msg
+        self.msg = str(msg)
         self.status_type = status_type
-        self.status = status_type(msg)
+        self.status = status_type(self.msg)
 
 
 class Operator(CharmBase):
@@ -86,7 +86,10 @@ class Operator(CharmBase):
                                     ],
                                 },
                                 {
-                                    "apiGroups": ["networking.istio.io"],
+                                    "apiGroups": [
+                                        "networking.istio.io",
+                                        "networking.istio.io/v1alpha3",
+                                    ],
                                     "resources": ["virtualservices"],
                                     "verbs": [
                                         "get",
