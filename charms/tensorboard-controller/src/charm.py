@@ -86,10 +86,7 @@ class Operator(CharmBase):
                                     ],
                                 },
                                 {
-                                    "apiGroups": [
-                                        "networking.istio.io",
-                                        "networking.istio.io/v1alpha3",
-                                    ],
+                                    "apiGroups": ["networking.istio.io"],
                                     "resources": ["virtualservices"],
                                     "verbs": [
                                         "get",
@@ -118,6 +115,11 @@ class Operator(CharmBase):
                                     "verbs": ["get", "patch", "update"],
                                 },
                                 {
+                                    "apiGroups": ["tensorboard.kubeflow.org"],
+                                    "resources": ["tensorboards/finalizers"],
+                                    "verbs": ["update"],
+                                },
+                                {
                                     "apiGroups": ["storage.k8s.io"],
                                     "resources": ["storageclasses"],
                                     "verbs": ["get", "list", "watch"],
@@ -128,7 +130,7 @@ class Operator(CharmBase):
                 },
                 "containers": [
                     {
-                        "name": "controller-manager",
+                        "name": "deployment",
                         "imageDetails": image_details,
                         "command": ["/manager"],
                         # "args": ["--enable-leader-election"],
