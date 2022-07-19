@@ -135,6 +135,10 @@ class Operator(CharmBase):
                         "command": ["/manager"],
                         # "args": ["--enable-leader-election"],
                         "ports": [{"name": "http", "containerPort": config["port"]}],
+                        "envConfig": {
+                            "ISTIO_GATEWAY": "kubeflow/kubeflow-gateway",
+                            "TENSORBOARD_IMAGE": "tensorflow/tensorflow:2.1.0",
+                        },
                     }
                 ],
             },
