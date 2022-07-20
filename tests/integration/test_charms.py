@@ -24,6 +24,30 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest):
         resources=resources,
     )
 
+    istio_gateway = "istio-ingressgateway"
+    istio_pilot = "istio-pilot"
+    tc_app_name = TC_METADATA["name"]
+
+    await ops_test.model.deploy(
+        entity_url="istio-gateway",
+        application_name=istio_gateway,
+        channel="latest/edge",
+        config={"kind": "ingress"},
+        trust=True,
+    )
+    await ops_test.model.deploy(
+        istio_pilot,
+        channel="latest/edge",
+        config={"default-gateway": "test-gateway"},
+        trust=True,
+    )
+
+    await ops_test.model.add_relation(
+        istio_pilot,
+        istio_gateway,
+    )
+    await ops_test.model.add_relation(f"{istio_pilot}:gateway", f"{tc_app_name}:gateway")
+
     image_path = TWA_METADATA["resources"]["oci-image"]["upstream-source"]
     resources = {"oci-image": image_path}
 
@@ -33,4 +57,3 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest):
     )
 
     await ops_test.model.wait_for_idle(timeout=60 * 10)
- 

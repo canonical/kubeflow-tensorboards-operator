@@ -10,6 +10,10 @@ from oci_image import OCIImageResource, OCIImageResourceError
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
+from charms.istio_pilot.v0.istio_gateway_name import (
+    GatewayRequirer,
+    GatewayRelationError,
+)
 
 
 class CheckFailed(Exception):
@@ -29,11 +33,14 @@ class Operator(CharmBase):
 
         self.log = logging.getLogger(__name__)
         self.image = OCIImageResource(self, "oci-image")
+        self.gateway = GatewayRequirer(self)
 
         for event in [
             self.on.install,
+            self.on.leader_elected,
             self.on.upgrade_charm,
             self.on.config_changed,
+            self.on["gateway"].relation_changed,
         ]:
             self.framework.observe(event, self.main)
 
@@ -47,6 +54,15 @@ class Operator(CharmBase):
             return
 
         config = self.model.config
+
+        try:
+            gateway_data = self.gateway.get_relation_data()
+        except GatewayRelationError:
+            self.model.unit.status = WaitingStatus("Waiting for gateway relation")
+            return
+
+        gateway_ns = gateway_data["gateway_namespace"]
+        gateway_name = gateway_data["gateway_name"]
 
         self.model.unit.status = MaintenanceStatus("Setting pod spec")
 
@@ -136,7 +152,7 @@ class Operator(CharmBase):
                         # "args": ["--enable-leader-election"],
                         "ports": [{"name": "http", "containerPort": config["port"]}],
                         "envConfig": {
-                            "ISTIO_GATEWAY": "kubeflow/kubeflow-gateway",
+                            "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
                             "TENSORBOARD_IMAGE": "tensorflow/tensorflow:2.1.0",
                         },
                     }

@@ -71,6 +71,7 @@ jobs:
             charmcraft-channel: latest/candidate
       - name: Run test
         run: |
+          sg microk8s -c "microk8s enable metallb:10.64.140.43-10.64.140.49"
           tox -e integration
 
       # TODO: Remove once the actions-operator does this automatically
@@ -82,6 +83,9 @@ jobs:
       - name: Get all
         run: kubectl get all -A
         if: failure()
+      - name: Get gateway
+        run: kubectl get gateway -A
+        if: failure()
       - name: Describe deployments
         run: kubectl describe deployments -A
         if: failure()
@@ -89,7 +93,7 @@ jobs:
         run: kubectl describe replicasets -A
         if: failure()
       - name: Get juju status
-        run: juju status
+        run: juju status --relations
         if: failure()
       - name: Get tensorboard-controller logs
         run: kubectl logs -n testing --tail 1000 -ljuju-app=tensorboard-controller
