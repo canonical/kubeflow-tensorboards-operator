@@ -14,3 +14,15 @@ options:
     type: boolean
     default: false
     description: Whether cookies should require HTTPS
+  sidebar-text:
+    type: string
+    default: Tensorboards
+    description: Label text in dashboard sidebar
+  sidebar-icon:
+    type: string
+    default: assessment
+    description: Icon name to be used in dashboard sidebar
+  sidebar-link:
+    type: string
+    default: /tensorboards/
+    description: Url path associated with the sidebar element

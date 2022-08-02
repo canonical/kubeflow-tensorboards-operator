@@ -17,6 +17,6 @@ requires:
     schema: https://raw.githubusercontent.com/canonical/operator-schemas/master/ingress.yaml
     versions: [v1]
 provides:
-  sidepanel:
-    interface: sidepanel
+  sidebar:
+    interface: sidebar
     optional: true
