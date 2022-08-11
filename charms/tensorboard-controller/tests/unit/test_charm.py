@@ -20,6 +20,12 @@ def test_not_leader(harness):
     assert isinstance(harness.charm.model.unit.status, WaitingStatus)
 
 
+def test_leader_elected(harness):
+    harness.begin_with_initial_hooks()
+    harness.set_leader(True)
+    assert not isinstance(harness.charm.model.unit.status, WaitingStatus)
+
+
 def test_missing_image(harness):
     harness.set_leader(True)
     harness.begin_with_initial_hooks()
