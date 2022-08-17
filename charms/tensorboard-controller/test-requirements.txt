@@ -5,3 +5,5 @@ pytest
 black
 flake8
 flake8-copyright<0.3
+# Temporarily pin to branch for demo purposes
+git+https://github.com/canonical/charmed-kubeflow-chisme.git@add-shared-unit-tests

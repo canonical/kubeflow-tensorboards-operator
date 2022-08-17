@@ -3,6 +3,9 @@
 
 import pytest
 
+from charmed_kubeflow_chisme.testing import test_leadership_events as leadership_events
+from charmed_kubeflow_chisme.testing import test_missing_image as missing_image
+from charmed_kubeflow_chisme.testing import test_missing_relation as missing_relation
 from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
 from ops.testing import Harness
 import yaml
@@ -15,35 +18,16 @@ def harness():
     return Harness(Operator)
 
 
-def test_not_leader(harness):
-    harness.begin_with_initial_hooks()
-    assert isinstance(harness.charm.model.unit.status, WaitingStatus)
-
-
-def test_leader_elected(harness):
-    harness.begin_with_initial_hooks()
-    harness.set_leader(True)
-    assert not isinstance(harness.charm.model.unit.status, WaitingStatus)
+def test_leadership_events(harness):
+    leadership_events(harness)
 
 
 def test_missing_image(harness):
-    harness.set_leader(True)
-    harness.begin_with_initial_hooks()
-    assert isinstance(harness.charm.model.unit.status, BlockedStatus)
+    missing_image(harness, BlockedStatus)
 
 
-def test_no_gateway_relation(harness):
-    harness.set_leader(True)
-    harness.add_oci_resource(
-        "oci-image",
-        {
-            "registrypath": "image",
-            "username": "",
-            "password": "",
-        },
-    )
-    harness.begin_with_initial_hooks()
-    assert isinstance(harness.charm.model.unit.status, WaitingStatus)
+def test_missing_relation(harness):
+    missing_relation(harness, WaitingStatus)
 
 
 def test_main(harness):
