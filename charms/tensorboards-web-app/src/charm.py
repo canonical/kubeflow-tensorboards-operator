@@ -42,7 +42,12 @@ class Operator(CharmBase):
         ]:
             self.framework.observe(event, self.main)
         self.framework.observe(
-            self.on.sidebar_relation_joined, self._on_sidebar_relation_joined
+            self.on.sidebar_relation_joined,
+            self._on_sidebar_relation_joined,
+        )
+        self.framework.observe(
+            self.on.sidebar_relation_departed,
+            self._on_sidebar_relation_departed,
         )
 
     def main(self, event):
@@ -143,6 +148,7 @@ class Operator(CharmBase):
                     [
                         {
                             "app": self.app.name,
+                            "position": 4,
                             "type": "item",
                             "link": "/tensorboards/",
                             "text": "Tensorboards",
@@ -152,6 +158,11 @@ class Operator(CharmBase):
                 )
             }
         )
+
+    def _on_sidebar_relation_departed(self, event):
+        if not self.unit.is_leader():
+            return
+        event.relation.data[self.app].update({"config": json.dumps([])})
 
     def _check_leader(self):
         if not self.unit.is_leader():
