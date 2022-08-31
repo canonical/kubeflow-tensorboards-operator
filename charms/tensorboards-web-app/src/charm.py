@@ -38,6 +38,7 @@ class Operator(CharmBase):
             self.on.install,
             self.on.upgrade_charm,
             self.on.config_changed,
+            self.on.leader_elected,
             self.on["ingress"].relation_changed,
         ]:
             self.framework.observe(event, self.main)
