@@ -11,6 +11,6 @@ resources:
     description: OCI image for httpbin (kennethreitz/httpbin)
     upstream-source: kubeflownotebookswg/tensorboard-controller:v1.6.0-rc.2
 requires:
-  gateway:
-    interface: istio-gateway-name
+  gateway-info:
+    interface: istio-gateway-info
     limit: 1
