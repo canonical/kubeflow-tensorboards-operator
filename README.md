@@ -68,7 +68,7 @@ Please see the [official docs site](https://charmed-kubeflow.io/docs) for comple
 
 ### Bugs and feature requests
 If you find a bug in our operator or want to request a specific feature, please file a bug here:
-[https://github.com/canonical/dex-auth-operator/issues](https://github.com/canonical/dex-auth-operator/issues)
+https://github.com/canonical/kubeflow-tensorboards-operator/issues
 
 ### License
 Charmed Kubeflow is free software, distributed under the [Apache Software License, version 2.0](https://github.com/canonical/dex-auth-operator/blob/master/LICENSE).
