@@ -71,7 +71,7 @@ If you find a bug in our operator or want to request a specific feature, please 
 https://github.com/canonical/kubeflow-tensorboards-operator/issues
 
 ### License
-Charmed Kubeflow is free software, distributed under the [Apache Software License, version 2.0](https://github.com/canonical/dex-auth-operator/blob/master/LICENSE).
+Charmed Kubeflow is free software, distributed under the [Apache Software License, version 2.0](https://github.com/canonical/bundle-kubeflow/blob/main/LICENSE).
 
 ### Contributing
 Canonical welcomes contributions to Charmed Kubeflow. Please check out our [contributor agreement](https://ubuntu.com/legal/contributors) if you're interested in contributing to the distribution.
