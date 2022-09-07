@@ -32,7 +32,7 @@ def test_missing_image(harness):
     assert isinstance(harness.charm.model.unit.status, BlockedStatus)
 
 
-def test_no_gateway_relation(harness):
+def test_no_gateway_info_relation(harness):
     harness.set_leader(True)
     harness.add_oci_resource(
         "oci-image",
@@ -58,7 +58,7 @@ def test_main(harness):
         },
     )
 
-    rel_id = harness.add_relation("gateway", "app")
+    rel_id = harness.add_relation("gateway-info", "app")
     harness.update_relation_data(
         rel_id,
         "app",
