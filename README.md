@@ -14,12 +14,13 @@ To get started, install Kubeflow lite bundle (See [Quick start guide](https://ch
 
 Then, deploy Tensorboard Controller and Tensorboard Web App with
 ```bash
-juju deploy tesnorboard-controller --trust
-juju deploy tensorboards-web-app --trust
+juju deploy tesnorboard-controller --channel=latest/edge
+juju deploy tensorboards-web-app --channel=latest/edge
 ```
-And Create a relation to istio pilot with
+And Create the following relations
 ```bash
 juju relate istio-pilot:ingress tensorboards-web-app:ingress
+juju relate istio-pilot:gateway tensorboard-controller:gateway
 ```
 For a quick example on using Tensorboard, see https://charmed-kubeflow.io/docs/kubeflow-basics
 For more information, see https://juju.is/docs
@@ -45,7 +46,7 @@ Learn more about deploying and using Charmed Kubeflow at [https://charmed-kubefl
 * AutoML: **hyperparameter tuning, architecture search**
 * Composable: **edge deployment configurations available**
 
-### What’s included in Charmed Kubeflow 1.4
+### What’s included in Charmed Kubeflow
 * LDAP Authentication
 * Jupyter Notebooks
 * Work with Python and R
