@@ -14,7 +14,7 @@ To get started, install Kubeflow lite bundle (See [Quick start guide](https://ch
 
 Then, deploy Tensorboard Controller and Tensorboard Web App with
 ```bash
-juju deploy tesnorboard-controller --channel=latest/edge
+juju deploy tensorboard-controller --channel=latest/edge
 juju deploy tensorboards-web-app --channel=latest/edge
 ```
 And Create the following relations
