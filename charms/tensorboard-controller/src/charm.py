@@ -10,7 +10,7 @@ from oci_image import OCIImageResource, OCIImageResourceError
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
-from charms.istio_pilot.v0.istio_gateway_name import (
+from charms.istio_pilot.v0.istio_gateway_info import (
     GatewayRequirer,
     GatewayRelationError,
 )
@@ -40,7 +40,7 @@ class Operator(CharmBase):
             self.on.leader_elected,
             self.on.upgrade_charm,
             self.on.config_changed,
-            self.on["gateway"].relation_changed,
+            self.on["gateway-info"].relation_changed,
         ]:
             self.framework.observe(event, self.main)
 
@@ -58,7 +58,7 @@ class Operator(CharmBase):
         try:
             gateway_data = self.gateway.get_relation_data()
         except GatewayRelationError:
-            self.model.unit.status = WaitingStatus("Waiting for gateway relation")
+            self.model.unit.status = WaitingStatus("Waiting for gateway info relation")
             return
 
         gateway_ns = gateway_data["gateway_namespace"]
