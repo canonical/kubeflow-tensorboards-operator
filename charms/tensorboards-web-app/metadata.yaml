@@ -10,7 +10,7 @@ resources:
     type: oci-image
     description: 'Backing OCI image'
     auto-fetch: true
-    upstream-source: kubeflownotebookswg/tensorboards-web-app:v1.6.0-rc.1
+    upstream-source: kubeflownotebookswg/tensorboards-web-app:v1.6.1
 requires:
   ingress:
     interface: ingress
