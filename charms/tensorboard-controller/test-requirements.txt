@@ -3,5 +3,7 @@
 
 pytest
 black
-flake8
+# Temporarily pinned to due flake8-copyright not yet supporting flake8 6.  This can be removed when
+# [this fix](https://github.com/savoirfairelinux/flake8-copyright/pull/20) is merged.
+flake8==4.0.1
 flake8-copyright<0.3
