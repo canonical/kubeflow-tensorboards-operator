@@ -17,6 +17,7 @@ def test_not_leader(harness):
     harness.begin()
     assert type(harness.charm.model.unit.status) == MaintenanceStatus
 
+
 def test_leader_elected(harness):
     harness.begin_with_initial_hooks()
     harness.set_leader(True)
