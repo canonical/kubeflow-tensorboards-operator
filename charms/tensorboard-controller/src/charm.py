@@ -6,14 +6,11 @@ import logging
 from pathlib import Path
 
 import yaml
+from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError, GatewayRequirer
 from oci_image import OCIImageResource, OCIImageResourceError
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
-from charms.istio_pilot.v0.istio_gateway_info import (
-    GatewayRequirer,
-    GatewayRelationError,
-)
 
 
 class CheckFailed(Exception):
@@ -162,9 +159,7 @@ class Operator(CharmBase):
                 "kubernetesResources": {
                     "customResourceDefinitions": [
                         {"name": crd["metadata"]["name"], "spec": crd["spec"]}
-                        for crd in yaml.safe_load_all(
-                            Path("files/crds.yaml").read_text()
-                        )
+                        for crd in yaml.safe_load_all(Path("files/crds.yaml").read_text())
                     ],
                 },
             },
