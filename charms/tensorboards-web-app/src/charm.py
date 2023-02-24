@@ -93,6 +93,11 @@ class Operator(CharmBase):
                                     "resources": ["storageclasses"],
                                     "verbs": ["get", "list", "watch"],
                                 },
+                                {
+                                    "apiGroups": ["kubeflow.org"],
+                                    "resources": ["poddefaults"],
+                                    "verbs": ["get", "list", "watch"],
+                                },
                             ],
                         }
                     ]
