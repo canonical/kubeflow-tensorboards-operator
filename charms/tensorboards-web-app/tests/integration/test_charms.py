@@ -8,7 +8,6 @@ from pytest_operator.plugin import OpsTest
 
 log = logging.getLogger(__name__)
 
-TWA_METADATA = yaml.safe_load(Path("charms/tensorboards-web-app/metadata.yaml").read_text())
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 resources = {"oci-image": METADATA["resources"]["oci-image"]["upstream-source"]}
 twa = SimpleNamespace(name="tensorboard-webapp", resources=resources)

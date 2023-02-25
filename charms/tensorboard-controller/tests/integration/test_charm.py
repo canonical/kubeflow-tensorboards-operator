@@ -49,7 +49,7 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest, tc_charm):
 
     await asyncio.gather(
         ops_test.model.add_relation(istio_pilot.name, istio_gw.name),
-        ops_test.model.add_relation(f"{istio_pilot}:gateway-info", f"{tc.name}:gateway-info"),
+        ops_test.model.add_relation(f"{istio_pilot.name}:gateway-info", f"{tc.name}:gateway-info"),
     )
 
     await ops_test.model.wait_for_idle(timeout=60 * 10)
