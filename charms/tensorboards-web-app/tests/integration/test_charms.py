@@ -16,10 +16,6 @@ twa = SimpleNamespace(name="tensorboard-webapp", resources=resources)
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, twa_charm):
-    await ops_test.model.deploy(
-        twa_charm,
-        resources=twa.resources,
-        application_name=twa.name
-    )
+    await ops_test.model.deploy(twa_charm, resources=twa.resources, application_name=twa.name)
 
     await ops_test.model.wait_for_idle(timeout=60 * 10)
