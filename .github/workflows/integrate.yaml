@@ -44,7 +44,9 @@ jobs:
       run: sudo apt install tox
 
     - name: Lint code
-      run: tox -vve ${{ matrix.charm }}-lint
+      run: |
+        cd charms/${{ matrix.charm }}
+        tox -vve lint
 
   unit:
     name: Unit Test
@@ -61,11 +63,16 @@ jobs:
       run: sudo apt install tox
 
     - name: Run unit tests
-      run: tox -vve ${{ matrix.charm }}-unit
+      run: |
+        cd charms/${{ matrix.charm }}
+        tox -vve unit
 
   deploy:
     name: Integration Test
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        charm: [ tensorboard-controller, tensorboards-web-app ]
     steps:
     - name: Check out code
       uses: actions/checkout@v2
@@ -78,13 +85,14 @@ jobs:
     - name: Run test
       run: |
         sg microk8s -c "microk8s enable metallb:10.64.140.43-10.64.140.49"
+        cd charms/${{ matrix.charm }}
         tox -e integration
 
       # TODO: Remove once the actions-operator does this automatically
     - name: Configure kubectl
       run: |
-        sg microk8s -c "microk8s config > ~/.kube/config" 
-                           
+        sg microk8s -c "microk8s config > ~/.kube/config"
+
       # On failure, capture debugging resources
     - name: Get all
       run: kubectl get all -A
