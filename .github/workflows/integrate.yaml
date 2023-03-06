@@ -79,11 +79,6 @@ jobs:
       run: |
         sg microk8s -c "microk8s enable metallb:10.64.140.43-10.64.140.49"
         tox -e integration
-
-      # TODO: Remove once the actions-operator does this automatically
-    - name: Configure kubectl
-      run: |
-        sg microk8s -c "microk8s config > ~/.kube/config" 
                            
       # On failure, capture debugging resources
     - name: Get all
