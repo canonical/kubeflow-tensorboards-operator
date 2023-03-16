@@ -4,7 +4,7 @@ name: CI
 on:
   workflow_call:
     secrets:
-      charmcraft-credentials:
+      CHARMCRAFT_CREDENTIALS:
         required: true
 
 jobs:
@@ -16,7 +16,9 @@ jobs:
         - tensorboard-controller
         - tensorboards-web-app
     uses: canonical/kubeflow-ci/.github/workflows/pull-request-template.yaml@main
-    secrets: inherit
+    secrets: 
+      CHARMCRAFT_CREDENTIALS: "${{ secrets.CHARMCRAFT_CREDENTIALS }}"
+      github-token: "${{ secrets.GITHUB_TOKEN }}"
     with:
         charm-path: ./charms/${{ matrix.charm }}
 
