@@ -15,7 +15,7 @@ jobs:
         charm:
         - tensorboard-controller
         - tensorboards-web-app
-    uses: canonical/kubeflow-ci/.github/workflows/templates/pull-request.yaml@main
+    uses: canonical/kubeflow-ci/.github/workflows/pull-request-template.yaml@main
     secrets: inherit
     with:
         charm-path: ./charms/${{ matrix.charm }}
