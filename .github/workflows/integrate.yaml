@@ -15,7 +15,7 @@ jobs:
         charm:
         - tensorboard-controller
         - tensorboards-web-app
-    uses: canonical/charmed-kubeflow-workflows/.github/workflows/_quality-checks.yaml@main@main
+    uses: canonical/charmed-kubeflow-workflows/.github/workflows/_quality-checks.yaml@main
     secrets: inherit
     with:
         charm-path: ./charms/${{ matrix.charm }}
