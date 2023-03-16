@@ -16,9 +16,7 @@ jobs:
         - tensorboard-controller
         - tensorboards-web-app
     uses: canonical/kubeflow-ci/.github/workflows/pull-request-template.yaml@main
-    secrets: 
-      CHARMCRAFT_CREDENTIALS: "${{ secrets.CHARMCRAFT_CREDENTIALS }}"
-      github-token: "${{ secrets.GITHUB_TOKEN }}"
+    secrets: inherit
     with:
         charm-path: ./charms/${{ matrix.charm }}
 
