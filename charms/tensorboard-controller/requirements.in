@@ -1,5 +1,7 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+charmed-kubeflow-chisme
+lightkube
+lightkube-models
 ops
-oci-image

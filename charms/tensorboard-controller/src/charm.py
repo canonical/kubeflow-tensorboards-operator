@@ -1,184 +1,311 @@
 #!/usr/bin/env python3
-# Copyright 2021 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
-from pathlib import Path
+from typing import Dict, Tuple
 
-import yaml
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
+from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler
+from charmed_kubeflow_chisme.lightkube.batch import delete_many
+from charmed_kubeflow_chisme.pebble import update_layer
 from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError, GatewayRequirer
-from oci_image import OCIImageResource, OCIImageResourceError
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
+from lightkube import ApiError
+from lightkube.generic_resource import load_in_cluster_generic_resources
+from lightkube.models.core_v1 import ServicePort
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, Container, MaintenanceStatus, ModelError, WaitingStatus
+from ops.pebble import CheckStatus, Layer
+
+PROBE_PORT = "8081"
+PROBE_PATH = "/healthz"
+
+K8S_RESOURCE_FILES = [
+    "src/templates/auth_manifests.yaml.j2",
+]
+CRD_RESOURCE_FILES = [
+    "src/templates/crds.yaml.j2",
+]
 
 
-class CheckFailed(Exception):
-    """Raise this exception if one of the checks in main fails."""
+class TensorboardController(CharmBase):
+    """Tensorboard Controller Charmed Operator."""
 
-    def __init__(self, msg, status_type=None):
-        super().__init__()
-
-        self.msg = str(msg)
-        self.status_type = status_type
-        self.status = status_type(self.msg)
-
-
-class Operator(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.log = logging.getLogger(__name__)
-        self.image = OCIImageResource(self, "oci-image")
+        self.logger = logging.getLogger(__name__)
+
+        # retrieve configuration and base settings
+        self._namespace = self.model.name
+        self._lightkube_field_manager = "lightkube"
+        self._name = self.model.app.name
+        self._exec_command = "/manager"
+        self._container_name = "tensorboard-controller"
+        self._container_port = int(self.model.config["port"])
+        self._container = self.unit.get_container(self._container_name)
+
+        # setup context to be used for updating K8s resources
+        self._context = {
+            "app_name": self._name,
+            "namespace": self._namespace,
+            "service": self._name,
+        }
+        self._k8s_resource_handler = None
+        self._crd_resource_handler = None
+
+        self.service_patcher = KubernetesServicePatch(
+            self,
+            [ServicePort(name="http", port=self._container_port)],
+            refresh_event=self.on.config_changed,
+        )
+
         self.gateway = GatewayRequirer(self)
 
-        for event in [
-            self.on.install,
-            self.on.leader_elected,
-            self.on.upgrade_charm,
-            self.on.config_changed,
-            self.on["gateway-info"].relation_changed,
-        ]:
-            self.framework.observe(event, self.main)
+        # setup events to be handled by main event handler
+        self.framework.observe(self.on.config_changed, self._on_event)
+        self.framework.observe(self.on.leader_elected, self._on_event)
+        self.framework.observe(self.on.tensorboard_controller_pebble_ready, self._on_event)
+        self.framework.observe(self.on["gateway-info"].relation_changed, self._on_event)
 
-    def main(self, event):
-        try:
-            self._check_leader()
+        # setup events to be handled by specific event handlers
+        self.framework.observe(self.on.install, self._on_install)
+        self.framework.observe(self.on.upgrade_charm, self._on_upgrade)
+        self.framework.observe(self.on.remove, self._on_remove)
+        self.framework.observe(self.on.update_status, self._on_update_status)
 
-            image_details = self._check_image_details()
-        except CheckFailed as check_failed:
-            self.model.unit.status = check_failed.status
-            return
+    @property
+    def container(self) -> Container:
+        """Return container."""
+        return self._container
 
-        config = self.model.config
+    @property
+    def k8s_resource_handler(self) -> KubernetesResourceHandler:
+        """Get the K8s resource handler."""
+        if not self._k8s_resource_handler:
+            self._k8s_resource_handler = KubernetesResourceHandler(
+                field_manager=self._lightkube_field_manager,
+                template_files=K8S_RESOURCE_FILES,
+                context=self._context,
+                logger=self.logger,
+            )
+        load_in_cluster_generic_resources(self._k8s_resource_handler.lightkube_client)
+        return self._k8s_resource_handler
 
+    @k8s_resource_handler.setter
+    def k8s_resource_handler(self, handler: KubernetesResourceHandler):
+        """Set the K8s resource handler."""
+        self._k8s_resource_handler = handler
+
+    @property
+    def crd_resource_handler(self) -> KubernetesResourceHandler:
+        """Get the K8s CRD resource handler."""
+        if not self._crd_resource_handler:
+            self._crd_resource_handler = KubernetesResourceHandler(
+                field_manager=self._lightkube_field_manager,
+                template_files=CRD_RESOURCE_FILES,
+                context=self._context,
+                logger=self.logger,
+            )
+        load_in_cluster_generic_resources(self._crd_resource_handler.lightkube_client)
+        return self._crd_resource_handler
+
+    @crd_resource_handler.setter
+    def crd_resource_handler(self, handler: KubernetesResourceHandler):
+        """Set the K8s CRD resource handler."""
+        self._crd_resource_handler = handler
+
+    def _get_gateway_data(self) -> Tuple[str, str]:
+        """Retrieve gateway namespace and name from relation data."""
         try:
             gateway_data = self.gateway.get_relation_data()
         except GatewayRelationError:
-            self.model.unit.status = WaitingStatus("Waiting for gateway info relation")
+            raise ErrorWithStatus("Waiting for gateway info relation", WaitingStatus)
+
+        return gateway_data["gateway_namespace"], gateway_data["gateway_name"]
+
+    @property
+    def service_environment(self) -> Dict[str, str]:
+        """Return environment variables based on relation data."""
+        gateway_ns, gateway_name = self._get_gateway_data()
+        ret_env_vars = {
+            "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
+            "TENSORBOARD_IMAGE": "tensorflow/tensorflow:2.1.0",
+        }
+
+        return ret_env_vars
+
+    @property
+    def _tensorboard_controller_layer(self) -> Layer:
+        """Create and return Pebble framework layer."""
+        layer_config = {
+            "summary": "tensorboard-controller layer",
+            "description": "Pebble config layer for tensorboard-controller",
+            "services": {
+                self._container_name: {
+                    "override": "replace",
+                    "summary": "Entrypoint of tensorboard-controller image",
+                    "command": self._exec_command,
+                    "startup": "enabled",
+                    "environment": self.service_environment,
+                    "on-check-failure": {"tensorboard-controller-up": "restart"},
+                }
+            },
+            "checks": {
+                "tensorboard-controller-up": {
+                    "override": "replace",
+                    "period": "30s",
+                    "timeout": "20s",
+                    "threshold": 4,
+                    "http": {"url": f"http://localhost:{PROBE_PORT}{PROBE_PATH}"},
+                }
+            },
+        }
+
+        return Layer(layer_config)
+
+    def _check_and_report_k8s_conflict(self, error) -> bool:
+        """Return True if error status code is 409 (conflict), False otherwise."""
+        if error.status.code == 409:
+            self.logger.warning(f"Encountered a conflict: {error}")
+            return True
+        return False
+
+    def _apply_k8s_resources(self, force_conflicts: bool = False) -> None:
+        """Apply K8s resources.
+
+        Args:
+            force_conflicts (bool): *(optional)* Will "force" apply requests causing conflicting
+                                    fields to change ownership to the field manager used in this
+                                    charm.
+                                    NOTE: This will only be used if initial regular apply() fails.
+        """
+        self.unit.status = MaintenanceStatus("Creating K8s resources")
+        try:
+            self.k8s_resource_handler.apply()
+        except ApiError as error:
+            if self._check_and_report_k8s_conflict(error) and force_conflicts:
+                # conflict detected when applying K8s resources
+                # re-apply K8s resources with forced conflict resolution
+                self.unit.status = MaintenanceStatus("Force applying K8s resources")
+                self.logger.warning("Apply K8s resources with forced changes against conflicts")
+                self.k8s_resource_handler.apply(force=force_conflicts)
+            else:
+                raise GenericCharmRuntimeError("K8s resources creation failed") from error
+        try:
+            self.crd_resource_handler.apply()
+        except ApiError as error:
+            if self._check_and_report_k8s_conflict(error) and force_conflicts:
+                # conflict detected when applying CRD resources
+                # re-apply CRD resources with forced conflict resolution
+                self.unit.status = MaintenanceStatus("Force applying CRD resources")
+                self.logger.warning("Apply CRD resources with forced changes against conflicts")
+                self.crd_resource_handler.apply(force=force_conflicts)
+            else:
+                raise GenericCharmRuntimeError("CRD resources creation failed") from error
+        self.model.unit.status = MaintenanceStatus("K8s resources created")
+
+    def _check_leader(self) -> None:
+        """Check whether a unit is the leader."""
+        if not self.unit.is_leader():
+            # We can't do anything useful when not the leader, so do nothing.
+            self.logger.warning("Not a leader, skipping setup")
+            raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
+
+    def _check_container_connection(self) -> None:
+        """Check if connection can be made with container."""
+        if not self.container.can_connect():
+            raise ErrorWithStatus("Pod startup is not complete", MaintenanceStatus)
+
+    def _check_status(self) -> None:
+        """Check status of workload and set status accordingly."""
+        self._check_leader()
+        container = self.unit.get_container(self._container_name)
+        if container:
+            try:
+                check = container.get_check("tensorboard-controller-up")
+            except ModelError as error:
+                raise GenericCharmRuntimeError(
+                    "Failed to run health check on workload container"
+                ) from error
+            if check.status != CheckStatus.UP:
+                self.logger.error(
+                    f"Container {self._container_name} failed health check. It will be restarted."
+                )
+                raise ErrorWithStatus("Workload failed health check", MaintenanceStatus)
+            else:
+                self.model.unit.status = ActiveStatus()
+
+    def _on_install(self, _) -> None:
+        """Handle install event."""
+        # deploy K8s resources to speed up deployment
+        self._apply_k8s_resources()
+
+    def _on_upgrade(self, _) -> None:
+        """Handle upgrade event."""
+        # force conflict resolution in K8s resources update
+        self._on_event(_, force_conflicts=True)
+
+    def _on_remove(self, _) -> None:
+        """Handle remove event."""
+        delete_error = None
+        self.unit.status = MaintenanceStatus("Removing K8s resources")
+        k8s_resources_manifests = self.k8s_resource_handler.render_manifests()
+        crd_resources_manifests = self.crd_resource_handler.render_manifests()
+        try:
+            delete_many(self.k8s_resource_handler.lightkube_client, k8s_resources_manifests)
+        except ApiError as error:
+            # do not log/report when resources were not found
+            if error.status.code != 404:
+                self.logger.error(f"Failed to delete CRD resources, with error: {error}")
+                delete_error = error
+        try:
+            delete_many(self.crd_resource_handler.lightkube_client, crd_resources_manifests)
+        except ApiError as error:
+            # do not log/report when resources were not found
+            if error.status.code != 404:
+                self.logger.error(f"Failed to delete K8s resources, with error: {error}")
+                delete_error = error
+
+        if delete_error is not None:
+            raise delete_error
+
+        self.unit.status = MaintenanceStatus("K8s resources removed")
+
+    def _on_update_status(self, _) -> None:
+        """Handle update status event."""
+        self._on_event(_)
+        try:
+            self._check_status()
+        except ErrorWithStatus as err:
+            self.model.unit.status = err.status
+
+    def _on_event(self, event, force_conflicts: bool = False) -> None:
+        """Perform all required actions for the Charm.
+
+        Args:
+            force_conflicts (bool): Should only be used when need to resolved conflicts on K8s
+                                    resources.
+        """
+        try:
+            self._check_container_connection()
+            self._check_leader()
+            self._apply_k8s_resources(force_conflicts=force_conflicts)
+            update_layer(
+                self._container_name,
+                self._container,
+                self._tensorboard_controller_layer,
+                self.logger,
+            )
+        except ErrorWithStatus as err:
+            self.model.unit.status = err.status
+            self.logger.error(f"Failed to handle {event} with error: {err}")
             return
-
-        gateway_ns = gateway_data["gateway_namespace"]
-        gateway_name = gateway_data["gateway_name"]
-
-        self.model.unit.status = MaintenanceStatus("Setting pod spec")
-
-        self.model.pod.set_spec(
-            {
-                "version": 3,
-                "serviceAccount": {
-                    "roles": [
-                        {
-                            "global": True,
-                            "rules": [
-                                {
-                                    "apiGroups": ["apps"],
-                                    "resources": ["deployments"],
-                                    "verbs": [
-                                        "create",
-                                        "get",
-                                        "list",
-                                        "update",
-                                        "watch",
-                                    ],
-                                },
-                                {
-                                    "apiGroups": [""],
-                                    "resources": ["persistentvolumeclaims", "pods"],
-                                    "verbs": ["get", "list", "watch"],
-                                },
-                                {
-                                    "apiGroups": [""],
-                                    "resources": ["services"],
-                                    "verbs": [
-                                        "create",
-                                        "get",
-                                        "list",
-                                        "update",
-                                        "watch",
-                                    ],
-                                },
-                                {
-                                    "apiGroups": ["networking.istio.io"],
-                                    "resources": ["virtualservices"],
-                                    "verbs": [
-                                        "get",
-                                        "list",
-                                        "create",
-                                        "update",
-                                        "watch",
-                                    ],
-                                },
-                                {
-                                    "apiGroups": ["tensorboard.kubeflow.org"],
-                                    "resources": ["tensorboards"],
-                                    "verbs": [
-                                        "get",
-                                        "list",
-                                        "create",
-                                        "delete",
-                                        "patch",
-                                        "update",
-                                        "watch",
-                                    ],
-                                },
-                                {
-                                    "apiGroups": ["tensorboard.kubeflow.org"],
-                                    "resources": ["tensorboards/status"],
-                                    "verbs": ["get", "patch", "update"],
-                                },
-                                {
-                                    "apiGroups": ["tensorboard.kubeflow.org"],
-                                    "resources": ["tensorboards/finalizers"],
-                                    "verbs": ["update"],
-                                },
-                                {
-                                    "apiGroups": ["storage.k8s.io"],
-                                    "resources": ["storageclasses"],
-                                    "verbs": ["get", "list", "watch"],
-                                },
-                            ],
-                        }
-                    ]
-                },
-                "containers": [
-                    {
-                        "name": "deployment",
-                        "imageDetails": image_details,
-                        "command": ["/manager"],
-                        # "args": ["--enable-leader-election"],
-                        "ports": [{"name": "http", "containerPort": config["port"]}],
-                        "envConfig": {
-                            "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
-                            "TENSORBOARD_IMAGE": "tensorflow/tensorflow:2.1.0",
-                        },
-                    }
-                ],
-            },
-            {
-                "kubernetesResources": {
-                    "customResourceDefinitions": [
-                        {"name": crd["metadata"]["name"], "spec": crd["spec"]}
-                        for crd in yaml.safe_load_all(Path("files/crds.yaml").read_text())
-                    ],
-                },
-            },
-        )
 
         self.model.unit.status = ActiveStatus()
 
-    def _check_leader(self):
-        if not self.unit.is_leader():
-            # We can't do anything useful when not the leader, so do nothing.
-            raise CheckFailed("Waiting for leadership", WaitingStatus)
-
-    def _check_image_details(self):
-        try:
-            image_details = self.image.fetch()
-        except OCIImageResourceError as e:
-            raise CheckFailed(f"{e.status.message}", e.status_type)
-        return image_details
-
 
 if __name__ == "__main__":
-    main(Operator)
+    main(TensorboardController)

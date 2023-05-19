@@ -1,14 +1,19 @@
-# Copyright 2021 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 name: tensorboard-controller
 description: Kubeflow Tensorboard Controller
 summary: Kubeflow Tensorboard Controller
-min-juju-version: '2.9.2'
-series: [kubernetes]
+website: https://charmhub.io/tensorboard-controller
+source: https://github.com/canonical/kubeflow-tensorboards-operator/
+issues: https://github.com/canonical/kubeflow-tensorboards-operator/issues
+docs: https://discourse.charmhub.io/t/charmed-tensorboard-controller/8239
+containers:
+  tensorboard-controller:
+    resource: tensorboard-controller-image
 resources:
-  oci-image:
+  tensorboard-controller-image:
     type: oci-image
-    description: OCI image for httpbin (kennethreitz/httpbin)
+    description: OCI image for Tensorboard Controller
     upstream-source: kubeflownotebookswg/tensorboard-controller:v1.7.0
 requires:
   gateway-info:
