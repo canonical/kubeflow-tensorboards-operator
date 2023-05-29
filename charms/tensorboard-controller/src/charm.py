@@ -3,14 +3,12 @@
 # See LICENSE file for licensing details.
 
 import logging
-from pathlib import Path
 from typing import Dict, Tuple
 
-import yaml
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler
+from charmed_kubeflow_chisme.pebble import update_layer
 from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError, GatewayRequirer
-from oci_image import OCIImageResource, OCIImageResourceError
 from lightkube import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from ops.charm import CharmBase
@@ -28,22 +26,13 @@ CRD_RESOURCE_FILES = [
     "src/templates/crds.yaml.j2",
 ]
 
-class CheckFailed(Exception):
-    """Raise this exception if one of the checks in main fails."""
 
-    def __init__(self, msg, status_type=None):
-        super().__init__()
+class TensorboardController(CharmBase):
+    """Tensorboard Controller Charmed Operator."""
 
-        self.msg = str(msg)
-        self.status_type = status_type
-        self.status = status_type(self.msg)
-
-
-class Operator(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.image = OCIImageResource(self, "oci-image")
         self.logger = logging.getLogger(__name__)
 
         # retrieve configuration and base settings
@@ -65,140 +54,15 @@ class Operator(CharmBase):
 
         self.gateway = GatewayRequirer(self)
 
-        for event in [
-            self.on.install,
-            self.on.leader_elected,
-            self.on.upgrade_charm,
-            self.on.config_changed,
-            self.on["gateway-info"].relation_changed,
-        ]:
-            self.framework.observe(event, self.main)
+        # setup events to be handled by main event handler
+        self.framework.observe(self.on.config_changed, self._on_event)
+        self.framework.observe(self.on.leader_elected, self._on_event)
+        self.framework.observe(self.on.tensorboard_controller_pebble_ready, self._on_event)
+        self.framework.observe(self.on["gateway-info"].relation_changed, self._on_event)
 
-    def main(self, event):
-        try:
-            self._check_leader()
-
-            image_details = self._check_image_details()
-        except CheckFailed as check_failed:
-            self.model.unit.status = check_failed.status
-            return
-
-        config = self.model.config
-
-        try:
-            gateway_data = self.gateway.get_relation_data()
-        except GatewayRelationError:
-            self.model.unit.status = WaitingStatus("Waiting for gateway info relation")
-            return
-
-        gateway_ns = gateway_data["gateway_namespace"]
-        gateway_name = gateway_data["gateway_name"]
-
-        self.model.unit.status = MaintenanceStatus("Setting pod spec")
-
-        self.model.pod.set_spec(
-            {
-                "version": 3,
-                "serviceAccount": {
-                    "roles": [
-                        {
-                            "global": True,
-                            "rules": [
-                                {
-                                    "apiGroups": ["apps"],
-                                    "resources": ["deployments"],
-                                    "verbs": [
-                                        "create",
-                                        "get",
-                                        "list",
-                                        "update",
-                                        "watch",
-                                    ],
-                                },
-                                {
-                                    "apiGroups": [""],
-                                    "resources": ["persistentvolumeclaims", "pods"],
-                                    "verbs": ["get", "list", "watch"],
-                                },
-                                {
-                                    "apiGroups": [""],
-                                    "resources": ["services"],
-                                    "verbs": [
-                                        "create",
-                                        "get",
-                                        "list",
-                                        "update",
-                                        "watch",
-                                    ],
-                                },
-                                {
-                                    "apiGroups": ["networking.istio.io"],
-                                    "resources": ["virtualservices"],
-                                    "verbs": [
-                                        "get",
-                                        "list",
-                                        "create",
-                                        "update",
-                                        "watch",
-                                    ],
-                                },
-                                {
-                                    "apiGroups": ["tensorboard.kubeflow.org"],
-                                    "resources": ["tensorboards"],
-                                    "verbs": [
-                                        "get",
-                                        "list",
-                                        "create",
-                                        "delete",
-                                        "patch",
-                                        "update",
-                                        "watch",
-                                    ],
-                                },
-                                {
-                                    "apiGroups": ["tensorboard.kubeflow.org"],
-                                    "resources": ["tensorboards/status"],
-                                    "verbs": ["get", "patch", "update"],
-                                },
-                                {
-                                    "apiGroups": ["tensorboard.kubeflow.org"],
-                                    "resources": ["tensorboards/finalizers"],
-                                    "verbs": ["update"],
-                                },
-                                {
-                                    "apiGroups": ["storage.k8s.io"],
-                                    "resources": ["storageclasses"],
-                                    "verbs": ["get", "list", "watch"],
-                                },
-                            ],
-                        }
-                    ]
-                },
-                "containers": [
-                    {
-                        "name": "deployment",
-                        "imageDetails": image_details,
-                        "command": ["/manager"],
-                        # "args": ["--enable-leader-election"],
-                        "ports": [{"name": "http", "containerPort": config["port"]}],
-                        "envConfig": {
-                            "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
-                            "TENSORBOARD_IMAGE": "tensorflow/tensorflow:2.1.0",
-                        },
-                    }
-                ],
-            },
-            {
-                "kubernetesResources": {
-                    "customResourceDefinitions": [
-                        {"name": crd["metadata"]["name"], "spec": crd["spec"]}
-                        for crd in yaml.safe_load_all(Path("files/crds.yaml").read_text())
-                    ],
-                },
-            },
-        )
-
-        self.model.unit.status = ActiveStatus()
+        # setup events to be handled by specific event handlers
+        self.framework.observe(self.on.install, self._on_install)
+        self.framework.observe(self.on.upgrade_charm, self._on_upgrade)
 
     @property
     def container(self) -> Container:
@@ -338,13 +202,6 @@ class Operator(CharmBase):
             self.logger.warning("Not a leader, skipping setup")
             raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
 
-    def _check_image_details(self):
-        try:
-            image_details = self.image.fetch()
-        except OCIImageResourceError as e:
-            raise CheckFailed(f"{e.status.message}", e.status_type)
-        return image_details
-
     def _check_container_connection(self) -> None:
         """Check if connection can be made with container."""
         if not self.container.can_connect():
@@ -369,6 +226,40 @@ class Operator(CharmBase):
             else:
                 self.model.unit.status = ActiveStatus()
 
+    def _on_install(self, _) -> None:
+        """Handle install event."""
+        # deploy K8s resources to speed up deployment
+        self._apply_k8s_resources()
+
+    def _on_upgrade(self, _) -> None:
+        """Handle upgrade event."""
+        # force conflict resolution in K8s resources update
+        self._on_event(_, force_conflicts=True)
+
+    def _on_event(self, event, force_conflicts: bool = False) -> None:
+        """Perform all required actions for the Charm.
+
+        Args:
+            force_conflicts (bool): Should only be used when need to resolved conflicts on K8s
+                                    resources.
+        """
+        try:
+            self._check_container_connection()
+            self._check_leader()
+            self._apply_k8s_resources(force_conflicts=force_conflicts)
+            update_layer(
+                self._container_name,
+                self._container,
+                self._tensorboard_controller_layer,
+                self.logger,
+            )
+        except ErrorWithStatus as err:
+            self.model.unit.status = err.status
+            self.logger.error(f"Failed to handle {event} with error: {err}")
+            return
+
+        self.model.unit.status = ActiveStatus()
+
 
 if __name__ == "__main__":
-    main(Operator)
+    main(TensorboardController)
