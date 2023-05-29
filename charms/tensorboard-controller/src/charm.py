@@ -7,6 +7,7 @@ from typing import Dict, Tuple
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
 from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler
+from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
 from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError, GatewayRequirer
 from lightkube import ApiError
@@ -63,6 +64,7 @@ class TensorboardController(CharmBase):
         # setup events to be handled by specific event handlers
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.upgrade_charm, self._on_upgrade)
+        self.framework.observe(self.on.remove, self._on_remove)
         self.framework.observe(self.on.update_status, self._on_update_status)
 
     @property
@@ -236,6 +238,32 @@ class TensorboardController(CharmBase):
         """Handle upgrade event."""
         # force conflict resolution in K8s resources update
         self._on_event(_, force_conflicts=True)
+
+    def _on_remove(self, _) -> None:
+        """Handle remove event."""
+        delete_error = None
+        self.unit.status = MaintenanceStatus("Removing K8s resources")
+        k8s_resources_manifests = self.k8s_resource_handler.render_manifests()
+        crd_resources_manifests = self.crd_resource_handler.render_manifests()
+        try:
+            delete_many(self.k8s_resource_handler.lightkube_client, k8s_resources_manifests)
+        except ApiError as error:
+            # do not log/report when resources were not found
+            if error.status.code != 404:
+                self.logger.error(f"Failed to delete CRD resources, with error: {error}")
+                delete_error = error
+        try:
+            delete_many(self.crd_resource_handler.lightkube_client, crd_resources_manifests)
+        except ApiError as error:
+            # do not log/report when resources were not found
+            if error.status.code != 404:
+                self.logger.error(f"Failed to delete K8s resources, with error: {error}")
+                delete_error = error
+
+        if delete_error is not None:
+            raise delete_error
+
+        self.unit.status = MaintenanceStatus("K8s resources removed")
 
     def _on_update_status(self, _) -> None:
         """Handle update status event."""
