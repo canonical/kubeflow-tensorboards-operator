@@ -63,6 +63,7 @@ class TensorboardController(CharmBase):
         # setup events to be handled by specific event handlers
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.upgrade_charm, self._on_upgrade)
+        self.framework.observe(self.on.update_status, self._on_update_status)
 
     @property
     def container(self) -> Container:
@@ -235,6 +236,14 @@ class TensorboardController(CharmBase):
         """Handle upgrade event."""
         # force conflict resolution in K8s resources update
         self._on_event(_, force_conflicts=True)
+
+    def _on_update_status(self, _) -> None:
+        """Handle update status event."""
+        self._on_event(_)
+        try:
+            self._check_status()
+        except ErrorWithStatus as err:
+            self.model.unit.status = err.status
 
     def _on_event(self, event, force_conflicts: bool = False) -> None:
         """Perform all required actions for the Charm.
