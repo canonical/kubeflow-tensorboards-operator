@@ -16,6 +16,10 @@ from lightkube.generic_resource import load_in_cluster_generic_resources
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container, MaintenanceStatus, ModelError, WaitingStatus
+from ops.pebble import Layer
+
+PROBE_PORT = "8081"
+PROBE_PATH = "/healthz"
 
 K8S_RESOURCE_FILES = [
     "src/templates/auth_manifests.yaml.j2",
@@ -46,6 +50,8 @@ class Operator(CharmBase):
         self._namespace = self.model.name
         self._lightkube_field_manager = "lightkube"
         self._name = self.model.app.name
+        self._exec_command = "/manager"
+        self._container_name = "tensorboard-controller"
         self._container = self.unit.get_container(self._container_name)
 
         # setup context to be used for updating K8s resources
@@ -254,6 +260,35 @@ class Operator(CharmBase):
         }
 
         return ret_env_vars
+
+    @property
+    def _tensorboard_controller_layer(self) -> Layer:
+        """Create and return Pebble framework layer."""
+        layer_config = {
+            "summary": "tensorboard-controller layer",
+            "description": "Pebble config layer for tensorboard-controller",
+            "services": {
+                self._container_name: {
+                    "override": "replace",
+                    "summary": "Entrypoint of tensorboard-controller image",
+                    "command": self._exec_command,
+                    "startup": "enabled",
+                    "environment": self.service_environment,
+                    "on-check-failure": {"tensorboard-controller-up": "restart"},
+                }
+            },
+            "checks": {
+                "tensorboard-controller-up": {
+                    "override": "replace",
+                    "period": "30s",
+                    "timeout": "20s",
+                    "threshold": 4,
+                    "http": {"url": f"http://localhost:{PROBE_PORT}{PROBE_PATH}"},
+                }
+            },
+        }
+
+        return Layer(layer_config)
 
     def _check_and_report_k8s_conflict(self, error) -> bool:
         """Return True if error status code is 409 (conflict), False otherwise."""
