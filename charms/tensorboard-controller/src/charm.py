@@ -16,7 +16,7 @@ from lightkube.generic_resource import load_in_cluster_generic_resources
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container, MaintenanceStatus, ModelError, WaitingStatus
-from ops.pebble import Layer
+from ops.pebble import CheckStatus, Layer
 
 PROBE_PORT = "8081"
 PROBE_PATH = "/healthz"
@@ -344,6 +344,30 @@ class Operator(CharmBase):
         except OCIImageResourceError as e:
             raise CheckFailed(f"{e.status.message}", e.status_type)
         return image_details
+
+    def _check_container_connection(self) -> None:
+        """Check if connection can be made with container."""
+        if not self.container.can_connect():
+            raise ErrorWithStatus("Pod startup is not complete", MaintenanceStatus)
+
+    def _check_status(self) -> None:
+        """Check status of workload and set status accordingly."""
+        self._check_leader()
+        container = self.unit.get_container(self._container_name)
+        if container:
+            try:
+                check = container.get_check("tensorboard-controller-up")
+            except ModelError as error:
+                raise GenericCharmRuntimeError(
+                    "Failed to run health check on workload container"
+                ) from error
+            if check.status != CheckStatus.UP:
+                self.logger.error(
+                    f"Container {self._container_name} failed health check. It will be restarted."
+                )
+                raise ErrorWithStatus("Workload failed health check", MaintenanceStatus)
+            else:
+                self.model.unit.status = ActiveStatus()
 
 
 if __name__ == "__main__":
