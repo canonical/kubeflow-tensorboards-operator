@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 options:
@@ -6,7 +6,3 @@ options:
     type: boolean
     default: false
     description: Enable leader election
-  port:
-    type: int
-    default: 9443
-    description: HTTP port
