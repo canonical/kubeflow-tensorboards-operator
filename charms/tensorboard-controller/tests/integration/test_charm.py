@@ -6,13 +6,32 @@ import logging
 from pathlib import Path
 
 import pytest
+import tenacity
 import yaml
+from lightkube import ApiError, Client, codecs
+from lightkube.generic_resource import (
+    create_namespaced_resource,
+    load_in_cluster_generic_resources,
+)
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
+ASSETS_DIR = Path("tests") / "assets"
+PVC_TEMPLATE_FILE = ASSETS_DIR / "dummy-pvc.yaml.j2"
+TENSORBOARD_TEMPLATE_FILE = ASSETS_DIR / "dummy-tensorboard.yaml.j2"
+
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
+
+PVC_NAME = "dummy-pvc"
+TENSORBOARD_NAME = "dummy-tensorboard"
+TENSORBOARD_RESOURCE = create_namespaced_resource(
+    group="tensorboard.kubeflow.org",
+    version="v1alpha1",
+    kind="tensorboard",
+    plural="tensorboards",
+)
 
 
 @pytest.mark.abort_on_fail
@@ -75,3 +94,53 @@ async def test_istio_gateway_info_relation(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=1000
     )
+
+
+@tenacity.retry(
+    wait=tenacity.wait_exponential(multiplier=2, min=1, max=10),
+    stop=tenacity.stop_after_attempt(30),
+    reraise=True,
+)
+def assert_replicas(client, resource_class, resource_name, namespace):
+    """Test for replicas.
+
+    Retries multiple times to allow for tensorboard to be created (i.e. readyReplicas == 1).
+    """
+    tensorboard = client.get(resource_class, resource_name, namespace=namespace)
+    replicas = tensorboard.get("status", {}).get("readyReplicas")
+
+    resource_class_kind = resource_class.__name__
+    if replicas == 1:
+        logger.info(f"{resource_class_kind}/{resource_name} readyReplicas == {replicas}")
+    else:
+        logger.info(
+            f"{resource_class_kind}/{resource_name} readyReplicas == {replicas} (waiting for '1')"
+        )
+
+    assert replicas == 1, f"Waited too long for {resource_class_kind}/{resource_name}!"
+
+
+async def test_create_tensorboard(ops_test: OpsTest):
+    """Test Tensorboard creation."""
+    lightkube_client = Client()
+    load_in_cluster_generic_resources(lightkube_client)
+
+    # Create PVC for Tensorboard logs and Tensorboard
+    resources = codecs.load_all_yaml(
+        "\n---\n".join([PVC_TEMPLATE_FILE.read_text(), TENSORBOARD_TEMPLATE_FILE.read_text()]),
+        context={"pvc_name": PVC_NAME, "tensorboard_name": TENSORBOARD_NAME},
+    )
+    for rsc in resources:
+        lightkube_client.create(rsc, namespace=ops_test.model_name)
+
+    try:
+        tensorboard_ready = lightkube_client.get(
+            TENSORBOARD_RESOURCE,
+            name=TENSORBOARD_NAME,
+            namespace=ops_test.model_name,
+        )
+    except ApiError:
+        assert False
+    assert tensorboard_ready, f"Tensorboard {ops_test.model_name}/{TENSORBOARD_NAME} not found!"
+
+    assert_replicas(lightkube_client, TENSORBOARD_RESOURCE, TENSORBOARD_NAME, ops_test.model_name)
