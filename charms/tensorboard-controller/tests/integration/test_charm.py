@@ -8,11 +8,14 @@ from pathlib import Path
 import pytest
 import tenacity
 import yaml
+from httpx import HTTPStatusError
 from lightkube import ApiError, Client, codecs
 from lightkube.generic_resource import (
     create_namespaced_resource,
     load_in_cluster_generic_resources,
 )
+from lightkube.resources.apiextensions_v1 import CustomResourceDefinition
+from lightkube.resources.core_v1 import PersistentVolumeClaim, Pod, Service
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
@@ -144,3 +147,54 @@ async def test_create_tensorboard(ops_test: OpsTest):
     assert tensorboard_ready, f"Tensorboard {ops_test.model_name}/{TENSORBOARD_NAME} not found!"
 
     assert_replicas(lightkube_client, TENSORBOARD_RESOURCE, TENSORBOARD_NAME, ops_test.model_name)
+
+
+@pytest.mark.abort_on_fail
+async def test_remove_with_resources_present(ops_test: OpsTest):
+    """Test remove with all resources deployed.
+
+    Verify that all deployed resources that need to be removed are removed.
+    """
+    # remove deployed charm and verify that it is deleted
+    await ops_test.model.remove_application(app_name=APP_NAME, block_until_done=True)
+    assert APP_NAME not in ops_test.model.applications
+
+    # verify that all resources that were deployed are deleted
+    lightkube_client = Client()
+
+    # verify that all created CRDs and Services in namespace are deleted
+    for rsc in [
+        CustomResourceDefinition,
+        Service,
+    ]:
+        rsc_list = lightkube_client.list(
+            rsc,
+            labels=[("app.juju.is/created-by", APP_NAME)],
+            namespace=ops_test.model_name,
+        )
+        assert not list(rsc_list)
+
+    # verify that all created Pods in namespace are deleted
+    for rsc in [
+        Pod,
+    ]:
+        rsc_list = lightkube_client.list(
+            rsc,
+            labels=[("app", TENSORBOARD_NAME)],
+            namespace=ops_test.model_name,
+        )
+        assert not list(rsc_list)
+
+    # verify that the PVC and Tensorboard are deleted
+    try:
+        for rsc, name in [
+            (PersistentVolumeClaim, PVC_NAME),
+            (TENSORBOARD_RESOURCE, TENSORBOARD_NAME),
+        ]:
+            _ = lightkube_client.get(rsc, name=name, namespace=ops_test.model_name)
+    except HTTPStatusError:
+        assert True
+    except ApiError as error:
+        if error.status.code != 404:
+            # other error than Not Found
+            assert False
