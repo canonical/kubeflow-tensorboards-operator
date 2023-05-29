@@ -4,6 +4,7 @@
 
 import logging
 from pathlib import Path
+from typing import Dict, Tuple
 
 import yaml
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
@@ -233,6 +234,26 @@ class Operator(CharmBase):
     def crd_resource_handler(self, handler: KubernetesResourceHandler):
         """Set the K8s CRD resource handler."""
         self._crd_resource_handler = handler
+
+    def _get_gateway_data(self) -> Tuple[str, str]:
+        """Retrieve gateway namespace and name from relation data."""
+        try:
+            gateway_data = self.gateway.get_relation_data()
+        except GatewayRelationError:
+            raise ErrorWithStatus("Waiting for gateway info relation", WaitingStatus)
+
+        return gateway_data["gateway_namespace"], gateway_data["gateway_name"]
+
+    @property
+    def service_environment(self) -> Dict[str, str]:
+        """Return environment variables based on relation data."""
+        gateway_ns, gateway_name = self._get_gateway_data()
+        ret_env_vars = {
+            "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
+            "TENSORBOARD_IMAGE": "tensorflow/tensorflow:2.1.0",
+        }
+
+        return ret_env_vars
 
     def _check_and_report_k8s_conflict(self, error) -> bool:
         """Return True if error status code is 409 (conflict), False otherwise."""
