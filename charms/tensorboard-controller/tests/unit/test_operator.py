@@ -4,7 +4,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from ops.model import ActiveStatus, WaitingStatus
+from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 
 from charm import TensorboardController
@@ -96,3 +96,17 @@ class TestCharm:
         # there should be 2 environment variables
         assert 2 == len(test_env)
         assert f"{model}/{name}" == test_env["ISTIO_GATEWAY"]
+
+    @patch("charm.TensorboardController.k8s_resource_handler")
+    @patch("charm.TensorboardController.crd_resource_handler")
+    def test_deploy_k8s_resources_success(
+        self,
+        k8s_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
+    ):
+        """Test that the K8s resource handler is executed as expected."""
+        harness.begin()
+        harness.charm._apply_k8s_resources()
+        k8s_resource_handler.apply.assert_called()
+        assert isinstance(harness.charm.model.unit.status, MaintenanceStatus)
