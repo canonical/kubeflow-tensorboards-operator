@@ -51,7 +51,7 @@ tomli==2.0.1
     #   -r ./requirements-fmt.txt
     #   black
     #   pyproject-flake8
-typing-extensions==4.4.0
+typing-extensions==4.6.2
     # via
     #   -r ./requirements-fmt.txt
     #   black
