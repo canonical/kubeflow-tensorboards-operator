@@ -110,3 +110,22 @@ class TestCharm:
         harness.charm._apply_k8s_resources()
         k8s_resource_handler.apply.assert_called()
         assert isinstance(harness.charm.model.unit.status, MaintenanceStatus)
+
+    @patch("charm.TensorboardController._apply_k8s_resources")
+    @patch("charm.TensorboardController._check_status")
+    def test_update_status(
+        self,
+        _apply_k8s_resources: MagicMock,
+        _check_status: MagicMock,
+        harness: Harness,
+    ):
+        """Test update status handler."""
+        harness.set_leader(True)
+        self._setup_gateway_info_relation(harness)
+        harness.begin_with_initial_hooks()
+        harness.container_pebble_ready("tensorboard-controller")
+
+        # test successful update status
+        harness.charm.on.update_status.emit()
+        _apply_k8s_resources.assert_called()
+        _check_status.assert_called()
