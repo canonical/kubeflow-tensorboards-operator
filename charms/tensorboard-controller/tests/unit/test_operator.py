@@ -70,3 +70,29 @@ class TestCharm:
         harness.begin_with_initial_hooks()
 
         assert isinstance(harness.charm.model.unit.status, ActiveStatus)
+
+    @patch("charm.TensorboardController.k8s_resource_handler")
+    @patch("charm.TensorboardController.crd_resource_handler")
+    def test_pebble_layer(
+        self,
+        k8s_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
+    ):
+        """Test creation of Pebble layer."""
+        harness.set_leader(True)
+        model, name = "kubeflow", "kubeflow-gateway"
+        harness.set_model_name(model)
+        self._setup_gateway_info_relation(harness, model, name)
+        harness.begin_with_initial_hooks()
+        harness.container_pebble_ready("tensorboard-controller")
+        assert harness.charm.container.get_service("tensorboard-controller").is_running()
+        pebble_plan = harness.get_container_pebble_plan("tensorboard-controller")
+        assert pebble_plan
+        assert pebble_plan.services
+        pebble_plan_info = pebble_plan.to_dict()
+        assert pebble_plan_info["services"]["tensorboard-controller"]["command"] == "/manager"
+        test_env = pebble_plan_info["services"]["tensorboard-controller"]["environment"]
+        # there should be 2 environment variables
+        assert 2 == len(test_env)
+        assert f"{model}/{name}" == test_env["ISTIO_GATEWAY"]
