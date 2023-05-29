@@ -1,17 +1,27 @@
 #!/usr/bin/env python3
-# Copyright 2021 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
 from pathlib import Path
 
 import yaml
+from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
+from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler
 from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError, GatewayRequirer
 from oci_image import OCIImageResource, OCIImageResourceError
+from lightkube import ApiError
+from lightkube.generic_resource import load_in_cluster_generic_resources
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, Container, MaintenanceStatus, ModelError, WaitingStatus
 
+K8S_RESOURCE_FILES = [
+    "src/templates/auth_manifests.yaml.j2",
+]
+CRD_RESOURCE_FILES = [
+    "src/templates/crds.yaml.j2",
+]
 
 class CheckFailed(Exception):
     """Raise this exception if one of the checks in main fails."""
@@ -28,8 +38,24 @@ class Operator(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.log = logging.getLogger(__name__)
         self.image = OCIImageResource(self, "oci-image")
+        self.logger = logging.getLogger(__name__)
+
+        # retrieve configuration and base settings
+        self._namespace = self.model.name
+        self._lightkube_field_manager = "lightkube"
+        self._name = self.model.app.name
+        self._container = self.unit.get_container(self._container_name)
+
+        # setup context to be used for updating K8s resources
+        self._context = {
+            "app_name": self._name,
+            "namespace": self._namespace,
+            "service": self._name,
+        }
+        self._k8s_resource_handler = None
+        self._crd_resource_handler = None
+
         self.gateway = GatewayRequirer(self)
 
         for event in [
@@ -167,10 +193,94 @@ class Operator(CharmBase):
 
         self.model.unit.status = ActiveStatus()
 
-    def _check_leader(self):
+    @property
+    def container(self) -> Container:
+        """Return container."""
+        return self._container
+
+    @property
+    def k8s_resource_handler(self) -> KubernetesResourceHandler:
+        """Get the K8s resource handler."""
+        if not self._k8s_resource_handler:
+            self._k8s_resource_handler = KubernetesResourceHandler(
+                field_manager=self._lightkube_field_manager,
+                template_files=K8S_RESOURCE_FILES,
+                context=self._context,
+                logger=self.logger,
+            )
+        load_in_cluster_generic_resources(self._k8s_resource_handler.lightkube_client)
+        return self._k8s_resource_handler
+
+    @k8s_resource_handler.setter
+    def k8s_resource_handler(self, handler: KubernetesResourceHandler):
+        """Set the K8s resource handler."""
+        self._k8s_resource_handler = handler
+
+    @property
+    def crd_resource_handler(self) -> KubernetesResourceHandler:
+        """Get the K8s CRD resource handler."""
+        if not self._crd_resource_handler:
+            self._crd_resource_handler = KubernetesResourceHandler(
+                field_manager=self._lightkube_field_manager,
+                template_files=CRD_RESOURCE_FILES,
+                context=self._context,
+                logger=self.logger,
+            )
+        load_in_cluster_generic_resources(self._crd_resource_handler.lightkube_client)
+        return self._crd_resource_handler
+
+    @crd_resource_handler.setter
+    def crd_resource_handler(self, handler: KubernetesResourceHandler):
+        """Set the K8s CRD resource handler."""
+        self._crd_resource_handler = handler
+
+    def _check_and_report_k8s_conflict(self, error) -> bool:
+        """Return True if error status code is 409 (conflict), False otherwise."""
+        if error.status.code == 409:
+            self.logger.warning(f"Encountered a conflict: {error}")
+            return True
+        return False
+
+    def _apply_k8s_resources(self, force_conflicts: bool = False) -> None:
+        """Apply K8s resources.
+
+        Args:
+            force_conflicts (bool): *(optional)* Will "force" apply requests causing conflicting
+                                    fields to change ownership to the field manager used in this
+                                    charm.
+                                    NOTE: This will only be used if initial regular apply() fails.
+        """
+        self.unit.status = MaintenanceStatus("Creating K8s resources")
+        try:
+            self.k8s_resource_handler.apply()
+        except ApiError as error:
+            if self._check_and_report_k8s_conflict(error) and force_conflicts:
+                # conflict detected when applying K8s resources
+                # re-apply K8s resources with forced conflict resolution
+                self.unit.status = MaintenanceStatus("Force applying K8s resources")
+                self.logger.warning("Apply K8s resources with forced changes against conflicts")
+                self.k8s_resource_handler.apply(force=force_conflicts)
+            else:
+                raise GenericCharmRuntimeError("K8s resources creation failed") from error
+        try:
+            self.crd_resource_handler.apply()
+        except ApiError as error:
+            if self._check_and_report_k8s_conflict(error) and force_conflicts:
+                # conflict detected when applying CRD resources
+                # re-apply CRD resources with forced conflict resolution
+                self.unit.status = MaintenanceStatus("Force applying CRD resources")
+                self.logger.warning("Apply CRD resources with forced changes against conflicts")
+                self.crd_resource_handler.apply(force=force_conflicts)
+            else:
+                raise GenericCharmRuntimeError("CRD resources creation failed") from error
+        self.model.unit.status = MaintenanceStatus("K8s resources created")
+
+    def _check_leader(self) -> None:
+        """Check whether a unit is the leader."""
         if not self.unit.is_leader():
             # We can't do anything useful when not the leader, so do nothing.
-            raise CheckFailed("Waiting for leadership", WaitingStatus)
+            self.logger.warning("Not a leader, skipping setup")
+            raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
 
     def _check_image_details(self):
         try:
