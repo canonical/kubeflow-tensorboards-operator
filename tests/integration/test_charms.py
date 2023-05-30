@@ -16,12 +16,13 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest):
     tensorboard_controller = await ops_test.build_charm("charms/tensorboard-controller")
     tensorboards_web_app = await ops_test.build_charm("charms/tensorboards-web-app")
 
-    image_path = TC_METADATA["resources"]["oci-image"]["upstream-source"]
-    resources = {"oci-image": image_path}
+    image_path = TC_METADATA["resources"]["tensorboard-controller-image"]["upstream-source"]
+    resources = {"tensorboard-controller-image": image_path}
 
     await ops_test.model.deploy(
         entity_url=tensorboard_controller,
         resources=resources,
+        trust=True,
     )
 
     istio_gateway = "istio-ingressgateway"
