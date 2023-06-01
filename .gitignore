@@ -4,3 +4,4 @@ build/
 __pycache__
 *.charm
 .idea
+.vscode
