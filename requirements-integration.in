@@ -1,2 +1,2 @@
-juju==2.9.42.1
+juju==2.9.42.4
 pytest-operator

@@ -48,7 +48,7 @@ jedi==0.18.2
     # via ipython
 jinja2==3.1.2
     # via pytest-operator
-juju==2.9.42.1
+juju==2.9.42.4
     # via
     #   -r requirements-integration.in
     #   pytest-operator
