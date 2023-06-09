@@ -55,6 +55,10 @@ class TensorboardsWebApp(CharmBase):
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.remove, self._on_remove)
 
+    @property
+    def container(self) -> Container:
+        """Return tensorboard-controller container object."""
+        return self._container
 
     @property
     def k8s_resource_handler(self) -> KubernetesResourceHandler:
