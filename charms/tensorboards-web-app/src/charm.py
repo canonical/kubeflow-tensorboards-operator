@@ -146,12 +146,25 @@ class Operator(CharmBase):
             raise CheckFailed(err, BlockedStatus)
         return interfaces
 
-    def _check_image_details(self):
-        try:
-            image_details = self.image.fetch()
-        except OCIImageResourceError as e:
-            raise CheckFailed(f"{e.status.message}", e.status_type)
-        return image_details
+    def _log_and_set_status(self, status):
+        # Copied from Istio-pilot charm
+        """Sets the status of the charm and logs the status message.
+
+        TODO: Move this to Chisme
+
+        Args:
+            status: The status to set
+        """
+        self.unit.status = status
+
+        log_destination_map = {
+            ActiveStatus: self.logger.info,
+            BlockedStatus: self.logger.warning,
+            MaintenanceStatus: self.logger.info,
+            WaitingStatus: self.logger.info,
+        }
+
+        log_destination_map[type(status)](status.message)
 
 
 if __name__ == "__main__":
