@@ -121,16 +121,19 @@ class Operator(CharmBase):
 
         self.model.unit.status = ActiveStatus()
 
-    def _configure_mesh(self, interfaces):
+    def _configure_mesh(self, interfaces) -> None:
         if interfaces["ingress"]:
             interfaces["ingress"].send_data(
                 {
                     "prefix": "/tensorboards",
                     "rewrite": "/",
-                    "service": self.model.app.name,
+                    "service": self.app.name,
                     "port": self.model.config["port"],
                 }
             )
+            self.unit.status = ActiveStatus()
+        else:
+            raise CheckFailed("No ingress relation available", BlockedStatus)
 
     def _check_leader(self):
         if not self.unit.is_leader():
