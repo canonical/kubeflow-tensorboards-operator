@@ -1,0 +1,8 @@
+apiVersion: tensorboard.kubeflow.org/v1alpha1
+kind: Tensorboard
+metadata:
+  labels:
+    app: {{ tensorboard_name }}
+  name: {{ tensorboard_name }}
+spec:
+  logspath: "pvc://{{ pvc_name }}/tensorboard_logs/"

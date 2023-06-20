@@ -54,6 +54,37 @@ jobs:
     - name: Run unit tests
       run: tox -vve ${{ matrix.charm }}-unit
 
+  integration:
+    name: Charm-specific Integration tests (microk8s)
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        charm: [tensorboard-controller]
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: microk8s
+          channel: 1.24/stable
+          juju-channel: 2.9/stable
+          charmcraft-channel: latest/candidate
+          microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
+
+      - run: |
+          sg microk8s -c "tox -vve ${{ matrix.charm }}-integration"
+
+      # Collect debug logs if failed
+      - name: Dump Juju/K8s logs on failure
+        uses: canonical/charm-logdump-action@main
+        if: failure()
+        with:
+          app: ${{ matrix.charm }}
+          model: testing
+
   deploy:
     name: Integration Test
     runs-on: ubuntu-20.04
