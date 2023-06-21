@@ -6,22 +6,34 @@
 
 import logging
 from typing import Dict
+from pathlib import Path
+import yaml
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
-from charmed_kubeflow_chisme.kubernetes import KubernetesResourceHandler
+from charmed_kubeflow_chisme.kubernetes import (
+    KubernetesResourceHandler,
+    create_charm_default_labels,
+)
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
+from lightkube.resources.rbac_authorization_v1 import ClusterRole, ClusterRoleBinding
+from lightkube.resources.core_v1 import ServiceAccount
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus, WaitingStatus
 from ops.pebble import Layer
 from serialized_data_interface import NoCompatibleVersions, NoVersionsListed, get_interfaces
 
-K8S_RESOURCE_FILES = ["src/templates/auth_manifests.yaml.j2"]
+METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+K8S_RESOURCES = {
+    "template_files": ["src/templates/auth_manifests.yaml.j2"],
+    "resource_types": {ClusterRole, ClusterRoleBinding, ServiceAccount},
+    "scope": "tensorboard",
+}
 LIGHTKUBE_FIELD_MANAGER = "lightkube"
 
 
@@ -35,8 +47,8 @@ class TensorboardsWebApp(CharmBase):
         self._name = self.app.name
         self._http_port = self.model.config["port"]
 
-        # Explicitly use defined string since the charm can be deployed with different app name
-        self._container_name = "tensorboards-web-app"
+        # Explicitly define container name since the charm can be deployed with different app name
+        self._container_name = list(METADATA["containers"])[0]
         self._container = self.unit.get_container(self._container_name)
         self._k8s_resource_handler = None
 
@@ -66,14 +78,19 @@ class TensorboardsWebApp(CharmBase):
         context = {
             "app_name": self._name,
             "namespace": self._namespace,
-            "service": self._name,
         }
 
         if not self._k8s_resource_handler:
             self._k8s_resource_handler = KubernetesResourceHandler(
                 field_manager=LIGHTKUBE_FIELD_MANAGER,
-                template_files=K8S_RESOURCE_FILES,
                 context=context,
+                template_files=K8S_RESOURCES["template_files"],
+                resource_types=K8S_RESOURCES["resource_types"],
+                labels=create_charm_default_labels(
+                    application_name=self.app.name,
+                    model_name=self.model.name,
+                    scope=K8S_RESOURCES["scope"],
+                ),
                 logger=self.logger,
             )
         load_in_cluster_generic_resources(self._k8s_resource_handler.lightkube_client)
@@ -119,11 +136,11 @@ class TensorboardsWebApp(CharmBase):
                     "command": exec_command,
                     "startup": "enabled",
                     "environment": self._env_vars,
-                    "on-check-failure": {"up": "restart"},
+                    "on-check-failure": {"tensorboards-web-app-up": "restart"},
                 }
             },
             "checks": {
-                "up": {
+                "tensorboards-web-app-up": {
                     "override": "replace",
                     "period": "30s",
                     "http": {"url": f"http://localhost:{self._http_port}"},
@@ -159,15 +176,14 @@ class TensorboardsWebApp(CharmBase):
         try:
             self._check_leader()
             self._deploy_k8s_resources()
-            if self._is_container_ready():
-                update_layer(
-                    self._container_name,
-                    self._container,
-                    self._tensorboards_web_app_layer,
-                    self.logger,
-                )
-                interfaces = self._get_interfaces()
-                self._configure_mesh(interfaces)
+            update_layer(
+                self._container_name,
+                self._container,
+                self._tensorboards_web_app_layer,
+                self.logger,
+            )
+            interfaces = self._get_interfaces()
+            self._configure_mesh(interfaces)
 
         except ErrorWithStatus as err:
             self._log_and_set_status(err.status)
