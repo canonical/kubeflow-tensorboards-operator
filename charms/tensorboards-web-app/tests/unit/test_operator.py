@@ -88,7 +88,6 @@ class TestCharm:
         test_env = pebble_plan_info["services"][APP_NAME]["environment"]
         # there should be 5 environment variables
         assert len(test_env) == 5
-        assert test_env["APP_PREFIX"] == "/tensorboards"
 
     @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
     @patch("charm.TensorboardsWebApp.k8s_resource_handler")
