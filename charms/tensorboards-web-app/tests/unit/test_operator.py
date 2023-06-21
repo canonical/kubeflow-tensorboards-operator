@@ -10,8 +10,6 @@ from ops.testing import Harness
 
 from charm import TensorboardsWebApp
 
-# Enable simulation of container networking
-ops.testing.SIMULATE_CAN_CONNECT = True
 APP_NAME = "tensorboards-web-app"
 
 
