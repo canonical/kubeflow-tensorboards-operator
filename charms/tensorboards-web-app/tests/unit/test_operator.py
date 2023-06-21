@@ -11,6 +11,7 @@ from ops.testing import Harness
 from charm import TensorboardsWebApp
 
 APP_NAME = "tensorboards-web-app"
+PORT = 5000
 
 
 @pytest.fixture(scope="function")
@@ -62,7 +63,7 @@ class TestCharm:
         relation_data = harness.get_relation_data(rel_id, harness.charm.app.name)
         data = {
             "service": "tensorboards-web-app",
-            "port": 5000,
+            "port": PORT,
             "prefix": "/tensorboards",
             "rewrite": "/",
         }

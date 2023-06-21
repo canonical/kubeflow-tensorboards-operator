@@ -12,8 +12,8 @@ from pytest_operator.plugin import OpsTest
 logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
-CONFIG = yaml.safe_load(Path("./config.yaml").read_text())
 APP_NAME = "tensorboards-web-app"
+PORT = 5000
 
 ISTIO_GATEWAY = "istio-ingressgateway"
 ISTIO_PILOT = "istio-pilot"
@@ -57,8 +57,7 @@ async def test_ui_is_accessible(ops_test: OpsTest):
     url = units[f"{APP_NAME}/0"]["address"]
 
     # obtain status and response text from TWA URL
-    port = CONFIG["options"]["port"]["default"]
-    result_status, result_text = await fetch_response(f"http://{url}:{port}")
+    result_status, result_text = await fetch_response(f"http://{url}:{PORT}")
 
     # verify that UI is accessible
     assert result_status == 200

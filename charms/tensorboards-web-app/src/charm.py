@@ -35,6 +35,7 @@ K8S_RESOURCES = {
     "scope": "tensorboard",
 }
 LIGHTKUBE_FIELD_MANAGER = "lightkube"
+PORT = 5000
 
 
 class TensorboardsWebApp(CharmBase):
@@ -45,16 +46,15 @@ class TensorboardsWebApp(CharmBase):
         self.logger = logging.getLogger(__name__)
         self._namespace = self.model.name
         self._name = self.app.name
-        self._http_port = self.model.config["port"]
 
         # Explicitly define container name since the charm can be deployed with different app name
         self._container_name = list(METADATA["containers"])[0]
         self._container = self.unit.get_container(self._container_name)
         self._k8s_resource_handler = None
 
-        http_port = ServicePort(int(self._http_port), name="http")
+        http_service_port = ServicePort(PORT, name="http")
         self.service_patcher = KubernetesServicePatch(
-            self, [http_port], service_name=f"{self._name}"
+            self, [http_service_port], service_name=f"{self._name}"
         )
 
         # Set up event handlers
@@ -119,11 +119,7 @@ class TensorboardsWebApp(CharmBase):
     def _tensorboards_web_app_layer(self) -> Layer:
         """Create and return Pebble framework layer."""
         exec_command = (
-            "gunicorn"
-            " -w 3"
-            f" --bind 0.0.0.0:{self._http_port}"
-            " --access-logfile"
-            " - entrypoint:app"
+            "gunicorn" " -w 3" f" --bind 0.0.0.0:{PORT}" " --access-logfile" " - entrypoint:app"
         )
 
         layer_config = {
@@ -143,7 +139,7 @@ class TensorboardsWebApp(CharmBase):
                 "tensorboards-web-app-up": {
                     "override": "replace",
                     "period": "30s",
-                    "http": {"url": f"http://localhost:{self._http_port}"},
+                    "http": {"url": f"http://localhost:{PORT}"},
                 },
             },
         }
@@ -220,7 +216,7 @@ class TensorboardsWebApp(CharmBase):
                     "prefix": "/tensorboards",
                     "rewrite": "/",
                     "service": self.app.name,
-                    "port": self.model.config["port"],
+                    "port": PORT,
                 }
             )
             self.unit.status = ActiveStatus()
