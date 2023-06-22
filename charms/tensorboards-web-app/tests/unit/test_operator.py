@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 from unittest.mock import MagicMock, patch
 
-import ops.testing
 import pytest
 import yaml
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
