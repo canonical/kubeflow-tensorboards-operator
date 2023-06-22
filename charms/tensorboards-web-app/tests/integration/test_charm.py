@@ -55,9 +55,10 @@ async def test_ui_is_accessible(ops_test: OpsTest):
     status = await ops_test.model.get_status()
     units = status["applications"][APP_NAME]["units"]
     url = units[f"{APP_NAME}/0"]["address"]
+    headers = {"kubeflow-userid": "user"}
 
     # obtain status and response text from TWA URL
-    result_status, result_text = await fetch_response(f"http://{url}:{PORT}")
+    result_status, result_text = await fetch_response(f"http://{url}:{PORT}", headers)
 
     # verify that UI is accessible
     assert result_status == 200
@@ -89,12 +90,12 @@ async def setup_istio(ops_test: OpsTest, istio_gateway: str, istio_pilot: str):
     )
 
 
-async def fetch_response(url):
+async def fetch_response(url, headers):
     """Fetch provided URL and return pair - status and text (int, string)."""
     result_status = 0
     result_text = ""
     async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
+        async with session.get(url=url, headers=headers) as response:
             result_status = response.status
             result_text = await response.text()
     return result_status, str(result_text)
