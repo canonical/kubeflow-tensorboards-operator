@@ -151,21 +151,20 @@ class TensorboardsWebApp(CharmBase):
         try:
             # Deploy K8S resources to speed up deployment
             self._deploy_k8s_resources()
-        except ErrorWithStatus as err:
-            self._log_and_set_status(err.status)
+        except ErrorWithStatus as error:
+            self._log_and_set_status(error.status)
         return
 
     def _on_remove(self, _) -> None:
         """Remove all resources."""
         self._log_and_set_status(MaintenanceStatus("Removing K8S resources"))
-        k8s_resources_manifests = self.k8s_resource_handler.render_manifests()
         try:
-            delete_many(self.k8s_resource_handler.lightkube_client, k8s_resources_manifests)
-        except ApiError as err:
+            self.k8s_resource_handler.delete()
+        except ApiError as error:
             # Do not log/report when resources were not found
-            if err.status.code != 404:
-                self.logger.error(f"Removing K8S resources failed with error: {err}")
-                raise GenericCharmRuntimeError("Removing K8s resources failed") from err
+            if error.status.code != 404:
+                self.logger.error(f"Removing K8S resources failed with error: {error}")
+                raise GenericCharmRuntimeError("Removing K8s resources failed") from error
 
     def _on_event(self, event) -> None:
         """Perform required actions for every event."""
@@ -180,9 +179,10 @@ class TensorboardsWebApp(CharmBase):
             )
             interfaces = self._get_interfaces()
             self._configure_mesh(interfaces)
+            self.unit.status = ActiveStatus()
 
-        except ErrorWithStatus as err:
-            self._log_and_set_status(err.status)
+        except ErrorWithStatus as error:
+            self._log_and_set_status(error.status)
             return
 
         self.unit.status = ActiveStatus()
@@ -196,19 +196,6 @@ class TensorboardsWebApp(CharmBase):
             raise ErrorWithStatus("Creating K8S resources failed", BlockedStatus)
         self._log_and_set_status(MaintenanceStatus("K8S resources created"))
 
-    def _is_container_ready(self) -> bool:
-        """Check if connection can be made with container.
-        Set maintenance status if container is not available.
-
-        Return:
-             False if container is not available
-             True if connection can be made
-        """
-        if not self._container.can_connect():
-            self._log_and_set_status(MaintenanceStatus("Waiting for pod startup to complete"))
-            return False
-        return True
-
     def _configure_mesh(self, interfaces) -> None:
         if interfaces["ingress"]:
             interfaces["ingress"].send_data(
@@ -219,7 +206,6 @@ class TensorboardsWebApp(CharmBase):
                     "port": PORT,
                 }
             )
-            self.unit.status = ActiveStatus()
         else:
             raise ErrorWithStatus("No ingress relation available", BlockedStatus)
 
@@ -227,16 +213,15 @@ class TensorboardsWebApp(CharmBase):
         """Check if this unit is a leader."""
         if not self.unit.is_leader():
             # We can't do anything useful when not the leader, so do nothing.
-            self.logger.info("Not a leader")
             raise ErrorWithStatus("Waiting for leadership", WaitingStatus)
 
     def _get_interfaces(self):
         try:
             interfaces = get_interfaces(self)
-        except NoVersionsListed as err:
-            raise ErrorWithStatus(err, WaitingStatus)
-        except NoCompatibleVersions as err:
-            raise ErrorWithStatus(err, BlockedStatus)
+        except NoVersionsListed as error:
+            raise ErrorWithStatus(error, WaitingStatus)
+        except NoCompatibleVersions as error:
+            raise ErrorWithStatus(error, BlockedStatus)
         return interfaces
 
     def _log_and_set_status(self, status):
