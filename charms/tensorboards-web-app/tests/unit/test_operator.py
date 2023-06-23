@@ -16,11 +16,7 @@ PORT = 5000
 @pytest.fixture(scope="function")
 def harness() -> Harness:
     """Create and return Harness for testing."""
-    harness = Harness(TensorboardsWebApp)
-
-    # Set up container networking simulation
-    harness.set_can_connect(APP_NAME, True)
-    return harness
+    return Harness(TensorboardsWebApp)
 
 
 class TestCharm:
