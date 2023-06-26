@@ -123,12 +123,12 @@ class TensorboardsWebApp(CharmBase):
         )
 
         layer_config = {
-            "summary": "jupyter-web-app layer",
-            "description": "Pebble config layer for jupyter-web-app",
+            "summary": "tensorboards-web-app layer",
+            "description": "Pebble config layer for tensorboards-web-app",
             "services": {
                 self._container_name: {
                     "override": "replace",
-                    "summary": "Entrypoint of jupyter-web-app image",
+                    "summary": "Entrypoint of tensorboards-web-app image",
                     "command": exec_command,
                     "startup": "enabled",
                     "environment": self._env_vars,
