@@ -34,7 +34,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     unit = ops_test.model.applications[APP_NAME].units[0]
     assert unit.workload_status == "blocked"
-    assert unit.workload_status_message == "No ingress relation available"
+    assert unit.workload_status_message == "Please relate to istio-pilot:ingress"
 
 
 @pytest.mark.abort_on_fail

@@ -207,7 +207,7 @@ class TensorboardsWebApp(CharmBase):
                 }
             )
         else:
-            raise ErrorWithStatus("No ingress relation available", BlockedStatus)
+            raise ErrorWithStatus("Please relate to istio-pilot:ingress", BlockedStatus)
 
     def _check_leader(self) -> None:
         """Check if this unit is a leader."""

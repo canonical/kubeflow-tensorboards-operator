@@ -35,7 +35,9 @@ class TestCharm:
         """Test that charm is blocked when there is no ingress relation."""
         harness.set_leader(True)
         harness.begin_with_initial_hooks()
-        assert harness.charm.model.unit.status == BlockedStatus("No ingress relation available")
+        assert harness.charm.model.unit.status == BlockedStatus(
+            "Please relate to istio-pilot:ingress"
+        )
 
     @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
     @patch("charm.TensorboardsWebApp.k8s_resource_handler")
