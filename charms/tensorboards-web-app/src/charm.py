@@ -150,7 +150,7 @@ class TensorboardsWebApp(CharmBase):
         """Perform installation only actions."""
         try:
             # Deploy K8S resources to speed up deployment
-            self._deploy_k8s_resources()
+            self._apply_k8s_resources()
         except ErrorWithStatus as error:
             self._log_and_set_status(error.status)
         return
@@ -170,7 +170,7 @@ class TensorboardsWebApp(CharmBase):
         """Perform required actions for every event."""
         try:
             self._check_leader()
-            self._deploy_k8s_resources()
+            self._apply_k8s_resources()
             update_layer(
                 self._container_name,
                 self._container,
@@ -187,14 +187,14 @@ class TensorboardsWebApp(CharmBase):
 
         self.unit.status = ActiveStatus()
 
-    def _deploy_k8s_resources(self) -> None:
+    def _apply_k8s_resources(self) -> None:
         """Deploy K8S resources."""
         try:
-            self._log_and_set_status(MaintenanceStatus("Creating K8S resources"))
+            self._log_and_set_status(MaintenanceStatus("Applying K8S resources"))
             self.k8s_resource_handler.apply()
         except ApiError:
-            raise ErrorWithStatus("Creating K8S resources failed", BlockedStatus)
-        self._log_and_set_status(MaintenanceStatus("K8S resources created"))
+            raise ErrorWithStatus("Applying K8S resources failed", BlockedStatus)
+        self._log_and_set_status(MaintenanceStatus("K8S resources applied"))
 
     def _configure_mesh(self, interfaces) -> None:
         if interfaces["ingress"]:
