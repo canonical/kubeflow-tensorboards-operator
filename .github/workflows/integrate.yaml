@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        charm: [tensorboard-controller]
+        charm: [tensorboard-controller, tensorboards-web-app]
 
     steps:
       - name: Check out code

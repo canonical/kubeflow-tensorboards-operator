@@ -1,17 +1,13 @@
-## Kubeflow Tensorboards Operator
+## Tensorboards Web App Operator
 
 ### Overview
-This charm encompasses the Kubernetes Python operator for Kubeflow Tensorboards (see
-[CharmHub](https://charmhub.io/?q=kubeflow-tensorboards)).
+This charm encompasses the Kubernetes Python operator for Kubeflow's Tensorboards Web App(see
+[CharmHub](https://charmhub.io/tensorboards-web-app)).
 
-The Kubeflow Tensorboards operator is a Python script that wraps the latest released version
-of Kubeflow Tensorboards, providing lifecycle management and handling events such as install,
+The Tensorboards Web App charmed operator is a Python script that wraps the latest released version
+of Kubeflow's Tensorboards Web App, providing lifecycle management and handling events such as install,
 upgrade, integrate, and remove.
 
-## Install
+## Usage
 
-To install Kubeflow Tensorboards, run:
-
-    juju deploy kubeflow-tensorboards
-
-For more information, see https://juju.is/docs
+This charm is an integral part of the Kubeflow Tensorboards Operator bundle. In order to install and use the whole bundle, please refer to the instructions [here](../../README.md#usage).

@@ -14,13 +14,13 @@ To get started, install Kubeflow lite bundle (See [Quick start guide](https://ch
 
 Then, deploy Tensorboard Controller and Tensorboard Web App with
 ```bash
-juju deploy tensorboard-controller --channel=latest/edge
-juju deploy tensorboards-web-app --channel=latest/edge
+juju deploy tensorboard-controller --channel=latest/edge --trust
+juju deploy tensorboards-web-app --channel=latest/edge --trust
 ```
 And Create the following relations
 ```bash
 juju relate istio-pilot:ingress tensorboards-web-app:ingress
-juju relate istio-pilot:gateway tensorboard-controller:gateway
+juju relate istio-pilot:gateway-info tensorboard-controller:gateway-info
 ```
 For a quick example on using Tensorboard, see https://charmed-kubeflow.io/docs/kubeflow-basics
 For more information, see https://juju.is/docs

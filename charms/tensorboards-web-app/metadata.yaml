@@ -1,14 +1,18 @@
-# Copyright 2021 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 name: tensorboards-web-app
 summary: Kubeflow Tensorboards Web App
 description: Kubeflow Tensorboards Web App
-min-juju-version: '2.9.0'
-series: [kubernetes]
+website: https://charmhub.io/tensorboards-web-app
+source: https://github.com/canonical/kubeflow-tensorboards-operator/
+docs: https://discourse.charmhub.io/t/charmed-tensorboards-web-app/8240
+containers:
+  tensorboards-web-app:
+    resource: tensorboards-web-app-image
 resources:
-  oci-image:
+  tensorboards-web-app-image:
     type: oci-image
-    description: 'Backing OCI image'
+    description: OCI image for Tensorboards Web App
     auto-fetch: true
     upstream-source: kubeflownotebookswg/tensorboards-web-app:v1.7.0
 requires:

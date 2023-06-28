@@ -28,6 +28,7 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest):
     istio_gateway = "istio-ingressgateway"
     istio_pilot = "istio-pilot"
     tc_app_name = TC_METADATA["name"]
+    twa_name = TWA_METADATA["name"]
 
     await ops_test.model.deploy(
         entity_url="istio-gateway",
@@ -49,12 +50,16 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest):
     )
     await ops_test.model.add_relation(f"{istio_pilot}:gateway-info", f"{tc_app_name}:gateway-info")
 
-    image_path = TWA_METADATA["resources"]["oci-image"]["upstream-source"]
-    resources = {"oci-image": image_path}
+    image_path = TWA_METADATA["resources"]["tensorboards-web-app-image"]["upstream-source"]
+    resources = {"tensorboards-web-app-image": image_path}
 
     await ops_test.model.deploy(
         entity_url=tensorboards_web_app,
         resources=resources,
+        trust=True,
     )
 
-    await ops_test.model.wait_for_idle(timeout=60 * 10)
+    await ops_test.model.add_relation(f"{istio_pilot}:ingress", f"{twa_name}:ingress")
+
+    # Wait for everything to deploy
+    await ops_test.model.wait_for_idle(status="active", timeout=60 * 5)

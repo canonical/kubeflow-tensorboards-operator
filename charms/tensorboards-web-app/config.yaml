@@ -1,14 +1,10 @@
-# Copyright 2021 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 options:
-  port:
-    type: int
-    default: 5000
-    description: HTTP port
   backend-mode:
     type: string
-    default: development
+    default: production
     description: Which mode out of `development` or `production` the backend server should use
   secure-cookies:
     type: boolean
