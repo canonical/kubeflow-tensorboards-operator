@@ -10,9 +10,9 @@ from pathlib import Path
 import yaml
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
-from charms.kubeflow_dashboard.v0.kubeflow_dashboard_sidebar import (
-    KubeflowDashboardSidebarRequirer,
-    SidebarItem,
+from charms.kubeflow_dashboard.v0.kubeflow_dashboard_links import (
+    DashboardLink,
+    KubeflowDashboardLinksRequirer,
 )
 from charmed_kubeflow_chisme.kubernetes import (
     KubernetesResourceHandler,
@@ -72,12 +72,16 @@ class TensorboardsWebApp(CharmBase):
         self.framework.observe(self.on.remove, self._on_remove)
 
         # add link in kubeflow-dashboard sidebar
-        self.kubeflow_dashboard_sidebar = KubeflowDashboardSidebarRequirer(
+        self.kubeflow_dashboard_sidebar = KubeflowDashboardLinksRequirer(
             charm=self,
-            relation_name="sidebar",
-            sidebar_items=[
-                SidebarItem(
-                    text="Tensorboards", link="/tensorboards/", type="item", icon="assessment"
+            relation_name="dashboard-links",
+            dashboard_links=[
+                DashboardLink(
+                    text="Tensorboards",
+                    link="/tensorboards/",
+                    type="item",
+                    icon="assessment",
+                    location="menu",
                 )
             ],
         )
