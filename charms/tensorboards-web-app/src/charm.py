@@ -10,6 +10,10 @@ from pathlib import Path
 import yaml
 
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
+from charms.kubeflow_dashboard.v0.kubeflow_dashboard_links import (
+    DashboardLink,
+    KubeflowDashboardLinksRequirer,
+)
 from charmed_kubeflow_chisme.kubernetes import (
     KubernetesResourceHandler,
     create_charm_default_labels,
@@ -66,6 +70,21 @@ class TensorboardsWebApp(CharmBase):
 
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(self.on.remove, self._on_remove)
+
+        # add link in kubeflow-dashboard sidebar
+        self.kubeflow_dashboard_sidebar = KubeflowDashboardLinksRequirer(
+            charm=self,
+            relation_name="dashboard-links",
+            dashboard_links=[
+                DashboardLink(
+                    text="Tensorboards",
+                    link="/tensorboards/",
+                    type="item",
+                    icon="assessment",
+                    location="menu",
+                )
+            ],
+        )
 
     @property
     def container(self) -> Container:
