@@ -1,5 +1,8 @@
+charmed-kubeflow-chisme
 coverage
+ops
 pytest
 pytest-mock
 pytest-lazy-fixture
--r requirements.txt
+pyyaml
+serialized-data-interface

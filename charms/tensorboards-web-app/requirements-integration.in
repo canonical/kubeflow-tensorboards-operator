@@ -1,5 +1,5 @@
+aiohttp
 # Pinning to <3.0 due to compatibility with the 2.9 controller version. 3.0 is not being maintained anymore.
 juju<3.0
 pytest-operator
-aiohttp
--r requirements.txt
+pyyaml
