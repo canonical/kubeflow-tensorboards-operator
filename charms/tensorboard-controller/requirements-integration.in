@@ -6,4 +6,3 @@ pytest
 pytest-operator
 pyyaml
 tenacity
-websockets
