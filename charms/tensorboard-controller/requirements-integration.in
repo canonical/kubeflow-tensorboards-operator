@@ -2,6 +2,7 @@
 # Note: 3.0 is not being maintained anymore
 juju<3.0
 lightkube
+pytest
 pytest-operator
 pyyaml
 tenacity
