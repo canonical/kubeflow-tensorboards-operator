@@ -6,7 +6,6 @@ description: Kubeflow Tensorboards Web App
 docs: https://discourse.charmhub.io/t/8240
 website: https://charmhub.io/tensorboards-web-app
 source: https://github.com/canonical/kubeflow-tensorboards-operator/
-docs: https://discourse.charmhub.io/t/charmed-tensorboards-web-app/8240
 containers:
   tensorboards-web-app:
     resource: tensorboards-web-app-image
