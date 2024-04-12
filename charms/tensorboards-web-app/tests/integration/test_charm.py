@@ -15,9 +15,12 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = "tensorboards-web-app"
 PORT = 5000
 
-ISTIO_GATEWAY = "istio-ingressgateway"
+ISTIO_CHANNEL = "1.17/stable"
 ISTIO_PILOT = "istio-pilot"
-
+ISTIO_PILOT_TRUST = True
+ISTIO_GATEWAY = "istio-gateway"
+ISTIO_GATEWAY_APP_NAME = "istio-ingressgateway"
+ISTIO_GATEWAY_TRUST = True
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
@@ -40,7 +43,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
 @pytest.mark.abort_on_fail
 async def test_ingress_relation(ops_test: OpsTest):
     """Setup Istio and relate it to the Tensoboards Web App(TWA)."""
-    await setup_istio(ops_test, ISTIO_GATEWAY, ISTIO_PILOT)
+    await setup_istio(ops_test)
 
     await ops_test.model.add_relation(f"{ISTIO_PILOT}:ingress", f"{APP_NAME}:ingress")
 
@@ -66,25 +69,25 @@ async def test_ui_is_accessible(ops_test: OpsTest):
     assert "Tensorboards Manager UI" in result_text
 
 
-async def setup_istio(ops_test: OpsTest, istio_gateway: str, istio_pilot: str):
+async def setup_istio(ops_test: OpsTest):
     """Deploy Istio Ingress Gateway and Istio Pilot."""
     await ops_test.model.deploy(
-        entity_url="istio-gateway",
-        application_name=istio_gateway,
-        channel="latest/edge",
+        ISTIO_GATEWAY,
+        application_name=ISTIO_GATEWAY_APP_NAME,
+        channel=ISTIO_CHANNEL,
         config={"kind": "ingress"},
-        trust=True,
+        trust=ISTIO_GATEWAY_TRUST,
     )
     await ops_test.model.deploy(
-        istio_pilot,
-        channel="latest/edge",
+        ISTIO_PILOT,
+        channel=ISTIO_CHANNEL,
         config={"default-gateway": "test-gateway"},
-        trust=True,
+        trust=ISTIO_PILOT_TRUST,
     )
-    await ops_test.model.add_relation(istio_pilot, istio_gateway)
+    await ops_test.model.add_relation(ISTIO_PILOT, ISTIO_GATEWAY)
 
     await ops_test.model.wait_for_idle(
-        apps=[istio_pilot, istio_gateway],
+        apps=[ISTIO_PILOT, ISTIO_GATEWAY],
         status="active",
         timeout=60 * 5,
     )
