@@ -22,6 +22,7 @@ ISTIO_GATEWAY = "istio-gateway"
 ISTIO_GATEWAY_APP_NAME = "istio-ingressgateway"
 ISTIO_GATEWAY_TRUST = True
 
+
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build and deploy the charm under test.
@@ -84,10 +85,10 @@ async def setup_istio(ops_test: OpsTest):
         config={"default-gateway": "test-gateway"},
         trust=ISTIO_PILOT_TRUST,
     )
-    await ops_test.model.add_relation(ISTIO_PILOT, ISTIO_GATEWAY)
+    await ops_test.model.add_relation(ISTIO_PILOT, ISTIO_GATEWAY_APP_NAME)
 
     await ops_test.model.wait_for_idle(
-        apps=[ISTIO_PILOT, ISTIO_GATEWAY],
+        apps=[ISTIO_PILOT, ISTIO_GATEWAY_APP_NAME],
         status="active",
         timeout=60 * 5,
     )

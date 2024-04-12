@@ -48,7 +48,7 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest):
         config={"default-gateway": "test-gateway"},
         trust=ISTIO_PILOT_TRUST,
     )
-    await ops_test.model.add_relation(ISTIO_PILOT, ISTIO_GATEWAY)
+    await ops_test.model.add_relation(ISTIO_PILOT, ISTIO_GATEWAY_APP_NAME)
 
     await ops_test.model.add_relation(f"{ISTIO_PILOT}:gateway-info", f"{tc_app_name}:gateway-info")
 
