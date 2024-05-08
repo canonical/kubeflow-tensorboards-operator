@@ -10,6 +10,13 @@ log = logging.getLogger(__name__)
 TC_METADATA = yaml.safe_load(Path("charms/tensorboard-controller/metadata.yaml").read_text())
 TWA_METADATA = yaml.safe_load(Path("charms/tensorboards-web-app/metadata.yaml").read_text())
 
+ISTIO_CHANNEL = "1.17/stable"
+ISTIO_PILOT = "istio-pilot"
+ISTIO_PILOT_TRUST = True
+ISTIO_GATEWAY = "istio-gateway"
+ISTIO_GATEWAY_APP_NAME = "istio-ingressgateway"
+ISTIO_GATEWAY_TRUST = True
+
 
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy_with_relations(ops_test: OpsTest):
@@ -25,30 +32,25 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest):
         trust=True,
     )
 
-    istio_gateway = "istio-ingressgateway"
-    istio_pilot = "istio-pilot"
     tc_app_name = TC_METADATA["name"]
     twa_name = TWA_METADATA["name"]
 
     await ops_test.model.deploy(
-        entity_url="istio-gateway",
-        application_name=istio_gateway,
-        channel="latest/edge",
+        ISTIO_GATEWAY,
+        application_name=ISTIO_GATEWAY_APP_NAME,
+        channel=ISTIO_CHANNEL,
         config={"kind": "ingress"},
-        trust=True,
+        trust=ISTIO_GATEWAY_TRUST,
     )
     await ops_test.model.deploy(
-        istio_pilot,
-        channel="latest/edge",
+        ISTIO_PILOT,
+        channel=ISTIO_CHANNEL,
         config={"default-gateway": "test-gateway"},
-        trust=True,
+        trust=ISTIO_PILOT_TRUST,
     )
+    await ops_test.model.add_relation(ISTIO_PILOT, ISTIO_GATEWAY_APP_NAME)
 
-    await ops_test.model.add_relation(
-        istio_pilot,
-        istio_gateway,
-    )
-    await ops_test.model.add_relation(f"{istio_pilot}:gateway-info", f"{tc_app_name}:gateway-info")
+    await ops_test.model.add_relation(f"{ISTIO_PILOT}:gateway-info", f"{tc_app_name}:gateway-info")
 
     image_path = TWA_METADATA["resources"]["tensorboards-web-app-image"]["upstream-source"]
     resources = {"tensorboards-web-app-image": image_path}
@@ -59,7 +61,7 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest):
         trust=True,
     )
 
-    await ops_test.model.add_relation(f"{istio_pilot}:ingress", f"{twa_name}:ingress")
+    await ops_test.model.add_relation(f"{ISTIO_PILOT}:ingress", f"{twa_name}:ingress")
 
     # Wait for everything to deploy
     await ops_test.model.wait_for_idle(status="active", timeout=60 * 5)

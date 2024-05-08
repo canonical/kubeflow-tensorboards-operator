@@ -5,27 +5,27 @@
 """A Juju Charm for Tensorboards Web App."""
 
 import logging
-from typing import Dict
 from pathlib import Path
-import yaml
+from typing import Dict
 
+import yaml
 from charmed_kubeflow_chisme.exceptions import ErrorWithStatus, GenericCharmRuntimeError
-from charms.kubeflow_dashboard.v0.kubeflow_dashboard_links import (
-    DashboardLink,
-    KubeflowDashboardLinksRequirer,
-)
 from charmed_kubeflow_chisme.kubernetes import (
     KubernetesResourceHandler,
     create_charm_default_labels,
 )
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
+from charms.kubeflow_dashboard.v0.kubeflow_dashboard_links import (
+    DashboardLink,
+    KubeflowDashboardLinksRequirer,
+)
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.models.core_v1 import ServicePort
-from lightkube.resources.rbac_authorization_v1 import ClusterRole, ClusterRoleBinding
 from lightkube.resources.core_v1 import ServiceAccount
+from lightkube.resources.rbac_authorization_v1 import ClusterRole, ClusterRoleBinding
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus, WaitingStatus
