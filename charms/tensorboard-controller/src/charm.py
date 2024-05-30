@@ -36,7 +36,7 @@ CRD_RESOURCES = {
     "scope": "tensorboard",
 }
 
-TENSORBOARD_IMAGE = "tensorflow/tensorflow:2.1.0"
+TENSORBOARD_IMAGE = "tensorflow/tensorflow:2.5.1"
 
 
 class TensorboardController(CharmBase):
@@ -114,6 +114,7 @@ class TensorboardController(CharmBase):
         gateway_ns, gateway_name = self._get_gateway_data()
         ret_env_vars = {
             "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
+            "ISTIO_HOST": "*",
             "TENSORBOARD_IMAGE": TENSORBOARD_IMAGE,
         }
 
