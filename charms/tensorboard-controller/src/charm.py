@@ -115,6 +115,7 @@ class TensorboardController(CharmBase):
         ret_env_vars = {
             "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
             "ISTIO_HOST": "*",
+            "RWO_PVC_SCHEDULING": "True",
             "TENSORBOARD_IMAGE": TENSORBOARD_IMAGE,
         }
 
