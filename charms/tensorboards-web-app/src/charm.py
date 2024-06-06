@@ -77,7 +77,7 @@ class TensorboardsWebApp(CharmBase):
             relation_name="dashboard-links",
             dashboard_links=[
                 DashboardLink(
-                    text="Tensorboards",
+                    text="TensorBoards",
                     link="/tensorboards/",
                     type="item",
                     icon="assessment",
