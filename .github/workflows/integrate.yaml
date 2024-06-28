@@ -69,8 +69,8 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: microk8s
-          channel: 1.25-strict/stable
-          juju-channel: 3.5/stable
+          channel: 1.29-strict/stable
+          juju-channel: 3.4/stable
           charmcraft-channel: latest/candidate
           microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
@@ -95,9 +95,9 @@ jobs:
       uses: charmed-kubernetes/actions-operator@main
       with:
         provider: microk8s
-        channel: 1.25-strict/stable
+        channel: 1.29-strict/stable
         charmcraft-channel: latest/candidate
-        juju-channel: 3.5/stable
+        juju-channel: 3.4/stable
         microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
     - name: Run test
