@@ -1,6 +1,8 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 charmed-kubeflow-chisme
 lightkube
 ops
+# from loki_k8s.v1.loki_push_api.py
+cosl

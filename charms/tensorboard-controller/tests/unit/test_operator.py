@@ -30,6 +30,16 @@ class TestCharm:
 
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
+    def test_log_forwarding(
+        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+    ):
+        """Test LogForwarder initialization."""
+        with patch("charm.LogForwarder") as mock_logging:
+            harness.begin()
+            mock_logging.assert_called_once_with(charm=harness.charm)
+
+    @patch("charm.TensorboardController.rbac_resource_handler")
+    @patch("charm.TensorboardController.crd_resource_handler")
     def test_not_leader(
         self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
     ):

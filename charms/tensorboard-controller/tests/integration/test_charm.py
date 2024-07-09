@@ -7,6 +7,11 @@ from pathlib import Path
 
 import pytest
 import yaml
+from charmed_kubeflow_chisme.testing import (
+    GRAFANA_AGENT_APP,
+    assert_logging,
+    deploy_and_assert_grafana_agent,
+)
 from lightkube import ApiError, Client, codecs
 from lightkube.generic_resource import (
     create_namespaced_resource,
@@ -81,6 +86,17 @@ async def test_build_and_deploy(ops_test: OpsTest):
     assert unit.workload_status == "waiting"
     assert unit.workload_status_message == "Waiting for gateway info relation"
 
+    # Deploying grafana-agent-k8s and add all relations
+    await deploy_and_assert_grafana_agent(
+        ops_test.model, APP_NAME, metrics=False, dashboard=False, logging=True
+    )
+
+
+async def test_logging(ops_test: OpsTest):
+    """Test logging is defined in relation data bag."""
+    app = ops_test.model.applications[GRAFANA_AGENT_APP]
+    await assert_logging(app)
+
 
 @pytest.mark.abort_on_fail
 async def test_istio_gateway_info_relation(ops_test: OpsTest):
@@ -89,7 +105,7 @@ async def test_istio_gateway_info_relation(ops_test: OpsTest):
     await setup_istio(ops_test, ISTIO_GATEWAY, ISTIO_PILOT)
 
     # add Tensorboard-Controller/Istio relation
-    await ops_test.model.add_relation(f"{ISTIO_PILOT}:gateway-info", f"{APP_NAME}:gateway-info")
+    await ops_test.model.integrate(f"{ISTIO_PILOT}:gateway-info", f"{APP_NAME}:gateway-info")
 
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=60 * 5
