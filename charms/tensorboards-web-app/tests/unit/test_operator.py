@@ -24,6 +24,14 @@ class TestCharm:
 
     @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
     @patch("charm.TensorboardsWebApp.k8s_resource_handler")
+    def test_log_forwarding(self, k8s_resource_handler: MagicMock, harness: Harness):
+        """Test LogForwarder initialization."""
+        with patch("charm.LogForwarder") as mock_logging:
+            harness.begin()
+            mock_logging.assert_called_once_with(charm=harness.charm)
+
+    @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
+    @patch("charm.TensorboardsWebApp.k8s_resource_handler")
     def test_not_leader(self, k8s_resource_handler: MagicMock, harness: Harness):
         """Test that charm waits if it's not the leader."""
         harness.begin_with_initial_hooks()

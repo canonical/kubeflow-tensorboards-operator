@@ -20,6 +20,7 @@ from charmed_kubeflow_chisme.kubernetes import (
 )
 from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
+from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from lightkube import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
@@ -85,6 +86,8 @@ class TensorboardsWebApp(CharmBase):
                 )
             ],
         )
+
+        self._logging = LogForwarder(charm=self)
 
     @property
     def container(self) -> Container:
