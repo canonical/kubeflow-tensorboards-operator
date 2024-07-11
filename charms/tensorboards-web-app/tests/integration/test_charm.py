@@ -7,6 +7,7 @@ from pathlib import Path
 import aiohttp
 import pytest
 import yaml
+from charmed_kubeflow_chisme.testing import assert_logging, deploy_and_assert_grafana_agent
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,17 @@ async def test_build_and_deploy(ops_test: OpsTest):
     unit = ops_test.model.applications[APP_NAME].units[0]
     assert unit.workload_status == "blocked"
     assert unit.workload_status_message == "Please relate to istio-pilot:ingress"
+
+    # Deploying grafana-agent-k8s and add all relations
+    await deploy_and_assert_grafana_agent(
+        ops_test.model, APP_NAME, metrics=False, dashboard=False, logging=True
+    )
+
+
+async def test_logging(ops_test: OpsTest):
+    """Test logging is defined in relation data bag."""
+    app = ops_test.model.applications[APP_NAME]
+    await assert_logging(app)
 
 
 @pytest.mark.abort_on_fail
