@@ -13,7 +13,8 @@ from charm import TensorboardController
 @pytest.fixture(scope="function")
 def harness() -> Harness:
     """Create and return Harness for testing."""
-    return Harness(TensorboardController)
+    with patch("charm.KubernetesServicePatch"), patch("charm.ServicePort"):
+        yield Harness(TensorboardController)
 
 
 class TestCharm:

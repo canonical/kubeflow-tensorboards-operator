@@ -13,7 +13,9 @@ from charmed_kubeflow_chisme.kubernetes import (
 from charmed_kubeflow_chisme.pebble import update_layer
 from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError, GatewayRequirer
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
+from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from lightkube.models.core_v1 import ServicePort
 from lightkube import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.resources.apiextensions_v1 import CustomResourceDefinition
@@ -26,6 +28,7 @@ from ops.pebble import Layer
 PROBE_PORT = "8081"
 PROBE_PATH = "/healthz"
 PROBE_NAME = "tensorboard-controller-up"
+METRICS_PORT = "8080"
 
 K8S_RESOURCES = {
     "template_files": ["src/templates/auth_manifests.yaml.j2"],
@@ -80,8 +83,14 @@ class TensorboardController(CharmBase):
         self.framework.observe(self.on.remove, self._on_remove)
 
         self._logging = LogForwarder(charm=self)
+        metrics_port = ServicePort(
+            port=METRICS_PORT, targetPort=METRICS_PORT, name=f"{self.app.name}-metrics"
+        )
+        self.service_patcher = KubernetesServicePatch(
+            self, [metrics_port], service_name=f"{self.model.app.name}"
+        )
         self.metrics_endpoint_provider = MetricsEndpointProvider(
-            self, jobs=[{"static_configs": [{"targets": ["*:8080"]}]}]
+            self, jobs=[{"static_configs": [{"targets": [f"*:{METRICS_PORT}"]}]}]
         )
 
     @property
