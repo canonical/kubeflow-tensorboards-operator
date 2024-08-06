@@ -7,7 +7,13 @@ from pathlib import Path
 
 import pytest
 import yaml
-from charmed_kubeflow_chisme.testing import assert_logging, deploy_and_assert_grafana_agent
+from charmed_kubeflow_chisme.testing import (
+    assert_alert_rules,
+    assert_logging,
+    assert_metrics_endpoint,
+    deploy_and_assert_grafana_agent,
+    get_alert_rules,
+)
 from lightkube import ApiError, Client, codecs
 from lightkube.generic_resource import (
     create_namespaced_resource,
@@ -62,6 +68,7 @@ def create_tensorboard(ops_test: OpsTest):
 
 
 @pytest.mark.abort_on_fail
+@pytest.mark.skip_if_deployed
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build the charm-under-test and deploy it together with related charms.
 
@@ -92,6 +99,24 @@ async def test_logging(ops_test: OpsTest):
     """Test logging is defined in relation data bag."""
     app = ops_test.model.applications[APP_NAME]
     await assert_logging(app)
+
+
+async def test_metrics_enpoint(ops_test):
+    """Test metrics_endpoints are defined in relation data bag and their accessibility.
+
+    This function gets all the metrics_endpoints from the relation data bag, checks if
+    they are available from the grafana-agent-k8s charm and finally compares them with the
+    ones provided to the function.
+    """
+    app = ops_test.model.applications[APP_NAME]
+    await assert_metrics_endpoint(app, metrics_port=8080, metrics_path="/metrics")
+
+
+async def test_alert_rules(ops_test):
+    """Test check charm alert rules and rules defined in relation data bag."""
+    app = ops_test.model.applications[APP_NAME]
+    alert_rules = get_alert_rules()
+    await assert_alert_rules(app, alert_rules)
 
 
 @pytest.mark.abort_on_fail

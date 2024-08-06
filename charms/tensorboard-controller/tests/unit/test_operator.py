@@ -28,15 +28,23 @@ class TestCharm:
         harness.update_relation_data(rel_id, "app", dummy_relation)
         harness.add_relation_unit(rel_id, "app/0")
 
-    @patch("charm.TensorboardController.rbac_resource_handler")
-    @patch("charm.TensorboardController.crd_resource_handler")
-    def test_log_forwarding(
-        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
-    ):
+    @patch("charm.TensorboardController.rbac_resource_handler", MagicMock())
+    @patch("charm.TensorboardController.crd_resource_handler", MagicMock())
+    def test_log_forwarding(self, harness: Harness):
         """Test LogForwarder initialization."""
         with patch("charm.LogForwarder") as mock_logging:
             harness.begin()
             mock_logging.assert_called_once_with(charm=harness.charm)
+
+    @patch("charm.TensorboardController.rbac_resource_handler", MagicMock())
+    @patch("charm.TensorboardController.crd_resource_handler", MagicMock())
+    def test_metrics(self, harness: Harness):
+        """Test MetricsEndpointProvider initialization."""
+        with patch("charm.MetricsEndpointProvider") as mock_metrics:
+            harness.begin()
+            mock_metrics.assert_called_once_with(
+                harness.charm, jobs=[{"static_configs": [{"targets": ["*:8080"]}]}]
+            )
 
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")

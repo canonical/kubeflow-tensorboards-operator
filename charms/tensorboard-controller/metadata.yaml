@@ -22,3 +22,6 @@ requires:
   logging:
     interface: loki_push_api
     optional: true
+provides:
+  metrics-endpoint:
+    interface: prometheus_scrape

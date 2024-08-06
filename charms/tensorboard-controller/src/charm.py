@@ -11,8 +11,9 @@ from charmed_kubeflow_chisme.kubernetes import (
     create_charm_default_labels,
 )
 from charmed_kubeflow_chisme.pebble import update_layer
-from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError, GatewayRequirer
+from charms.loki_k8s.v1.loki_push_api import LogForwarder
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from lightkube import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.resources.apiextensions_v1 import CustomResourceDefinition
@@ -79,6 +80,9 @@ class TensorboardController(CharmBase):
         self.framework.observe(self.on.remove, self._on_remove)
 
         self._logging = LogForwarder(charm=self)
+        self.metrics_endpoint_provider = MetricsEndpointProvider(
+            self, jobs=[{"static_configs": [{"targets": ["*:8080"]}]}]
+        )
 
     @property
     def container(self) -> Container:
