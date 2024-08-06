@@ -91,7 +91,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     # Deploying grafana-agent-k8s and add all relations
     await deploy_and_assert_grafana_agent(
-        ops_test.model, APP_NAME, metrics=False, dashboard=False, logging=True
+        ops_test.model, APP_NAME, metrics=True, dashboard=False, logging=True
     )
 
 
