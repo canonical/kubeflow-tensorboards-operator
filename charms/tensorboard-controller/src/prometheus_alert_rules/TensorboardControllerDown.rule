@@ -1,0 +1,8 @@
+alert: TensorboardControllerDown
+expr: up == 0
+for: 5m
+labels:
+  severity: critical
+annotations:
+  summary: Tensorboard controller Down (application {{ $labels.instance }})
+  description: "The Tensorboard cntroller service is unavailable.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
