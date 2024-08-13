@@ -1,5 +1,5 @@
 groups:
-- name: KubeflowProfiles
+- name: KubeflowTensorboardController
   rules:
   - alert: KubeflowServiceDown
     expr: up{} < 1
