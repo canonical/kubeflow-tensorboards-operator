@@ -14,7 +14,7 @@ resources:
   tensorboard-controller-image:
     type: oci-image
     description: OCI image for Tensorboard Controller
-    upstream-source: kubeflownotebookswg/tensorboard-controller:v1.9.0-rc.0
+    upstream-source: charmedkubeflow/tensorboard-controller:1.9.0-d74bfd2
 requires:
   gateway-info:
     interface: istio-gateway-info
