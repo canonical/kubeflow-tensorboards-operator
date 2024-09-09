@@ -149,7 +149,7 @@ class TensorboardsWebApp(CharmBase):
             "description": "Pebble config layer for tensorboards-web-app",
             "services": {
                 self._container_name: {
-                    "override": "replace",
+                    "override": "merge",
                     "summary": "Entrypoint of tensorboards-web-app image",
                     "command": exec_command,
                     "startup": "enabled",
