@@ -14,7 +14,7 @@ resources:
     type: oci-image
     description: OCI image for Tensorboards Web App
     auto-fetch: true
-    upstream-source: kubeflownotebookswg/tensorboards-web-app:v1.9.0-rc.0
+    upstream-source: charmedkubeflow/tensorboards-web-app:1.9.0-4b44bb5
 requires:
   ingress:
     interface: ingress
