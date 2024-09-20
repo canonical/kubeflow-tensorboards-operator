@@ -5,3 +5,6 @@ __pycache__
 *.charm
 .idea
 .vscode
+venv/
+.terraform*
+*.tfstate*
