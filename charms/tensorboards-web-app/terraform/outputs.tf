@@ -4,14 +4,14 @@ output "app_name" {
 
 output "provides" {
   value = {
-    metrics_endpoint  = "metrics-endpoint",
+    metrics_endpoint = "metrics-endpoint",
   }
 }
 
 output "requires" {
   value = {
-    ingress = "ingress",
-    dashboard_links = "dashboard-links"
-    logging        = "logging"
+    ingress         = "ingress",
+    dashboard_links = "dashboard-links",
+    logging         = "logging",
   }
 }
