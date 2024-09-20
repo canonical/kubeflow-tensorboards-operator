@@ -61,7 +61,7 @@ jobs:
       matrix:
         charm:
           - tensorboard-controller
-          - tesnorboards-web-app
+          - tensorboards-web-app
     with:
       charm-path: ./charms/${{ matrix.charm }}
       model: kubeflow

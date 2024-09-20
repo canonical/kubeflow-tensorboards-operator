@@ -11,6 +11,6 @@ output "provides" {
 output "requires" {
   value = {
     gateway_info = "gateway-info",
-    logging        = "logging"
+    logging      = "logging"
   }
 }
