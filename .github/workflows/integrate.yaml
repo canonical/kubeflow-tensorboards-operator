@@ -64,8 +64,6 @@ jobs:
           - tensorboards-web-app
     with:
       charm-path: ./charms/${{ matrix.charm }}
-      model: kubeflow
-      channel: latest/edge
       # Skipping the Terraform apply check as the tensorboard-controller goes to Waiting status
       # instead of the expected Blocked or Active. This is currently a limitation of the
       # Terraform re-usable workflows in canonical/charmed-kubeflow-workflows
