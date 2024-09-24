@@ -54,6 +54,22 @@ jobs:
     - name: Run unit tests
       run: tox -vve ${{ matrix.charm }}-unit
 
+  terraform-checks:
+    name: Terraform
+    uses: canonical/charmed-kubeflow-workflows/.github/workflows/terraform-checks.yaml@main
+    strategy:
+      matrix:
+        charm:
+          - tensorboard-controller
+          - tensorboards-web-app
+    with:
+      charm-path: ./charms/${{ matrix.charm }}
+      # Skipping the Terraform apply check as the tensorboard-controller goes to Waiting status
+      # instead of the expected Blocked or Active. This is currently a limitation of the
+      # Terraform re-usable workflows in canonical/charmed-kubeflow-workflows
+      # See https://github.com/canonical/charmed-kubeflow-workflows/issues/65
+      apply: false
+    
   integration:
     name: Charm-specific Integration tests (microk8s)
     runs-on: ubuntu-20.04
