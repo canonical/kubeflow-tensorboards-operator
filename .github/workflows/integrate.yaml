@@ -83,7 +83,7 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
       - name: Setup operator environment
-        uses: charmed-kubernetes/actions-operator@main
+        uses: charmed-kubernetes/actions-operator@issues/84/sg-to-sudo-regressoin
         with:
           provider: microk8s
           channel: 1.29-strict/stable
