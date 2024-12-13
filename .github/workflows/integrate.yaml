@@ -22,7 +22,7 @@ jobs:
 
   lint:
     name: Lint Check
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         charm: [tensorboard-controller, tensorboards-web-app]
@@ -39,7 +39,7 @@ jobs:
 
   unit:
     name: Unit Test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         charm: [tensorboard-controller, tensorboards-web-app]
@@ -72,7 +72,7 @@ jobs:
     
   integration:
     name: Charm-specific Integration tests (microk8s)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -103,7 +103,7 @@ jobs:
 
   deploy:
     name: Integration Test
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     steps:
     - name: Check out code
       uses: actions/checkout@v3
