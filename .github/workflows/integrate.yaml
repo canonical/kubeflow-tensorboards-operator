@@ -15,7 +15,8 @@ jobs:
         charm:
         - tensorboard-controller
         - tensorboards-web-app
-    uses: canonical/charmed-kubeflow-workflows/.github/workflows/_quality-checks.yaml@main
+    # Point to main once the charmcraft channel has been updated with 3.3/edge changes
+    uses: canonical/charmed-kubeflow-workflows/.github/workflows/_quality-checks.yaml@f-6725-use-charmcraft-3.x-edge-check-libs
     secrets: inherit
     with:
         charm-path: ./charms/${{ matrix.charm }}
@@ -80,14 +81,15 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: microk8s
           channel: 1.31-strict/stable
           juju-channel: 3.6/stable
-          charmcraft-channel: 3.x/stable
+          # TODO: remove after charmcraft 3.3 stable release
+          charmcraft-channel: 3.x/edge
           microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
       - run: |
@@ -112,7 +114,8 @@ jobs:
       with:
         provider: microk8s
         channel: 1.31-strict/stable
-        charmcraft-channel: 3.x/stable
+        # TODO: remove after charmcraft 3.3 stable release
+        charmcraft-channel: 3.x/edge
         juju-channel: 3.6/stable
         microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
