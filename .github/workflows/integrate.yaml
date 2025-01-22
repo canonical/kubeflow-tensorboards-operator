@@ -16,7 +16,7 @@ jobs:
         - tensorboard-controller
         - tensorboards-web-app
     # Point to main once the charmcraft channel has been updated with 3.3/edge changes
-    uses: canonical/charmed-kubeflow-workflows/.github/workflows/_quality-checks.yaml@f-6725-use-charmcraft-3.x-edge-check-libs
+    uses: canonical/charmed-kubeflow-workflows/.github/workflows/_quality-checks.yaml@kf-6725-use-charmcraft-3.x-edge-check-libs
     secrets: inherit
     with:
         charm-path: ./charms/${{ matrix.charm }}
