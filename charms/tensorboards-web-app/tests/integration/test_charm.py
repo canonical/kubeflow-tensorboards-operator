@@ -25,11 +25,18 @@ async def test_build_and_deploy(ops_test: OpsTest):
     """Build and deploy the charm under test.
     Assert on the unit status before ingress relation is set up.
     """
-    charm = await ops_test.build_charm(".")
+    # Build and deploy charm from local source folder or use a charm artefact passed using --charm-path
+    entity_url = (
+        await ops_test.build_charm(".")
+        if not (entity_url := request.config.getoption("--charm-path"))
+        else entity_url
+    )
     image_path = METADATA["resources"][f"{APP_NAME}-image"]["upstream-source"]
     resources = {f"{APP_NAME}-image": image_path}
 
-    await ops_test.model.deploy(charm, resources=resources, application_name=APP_NAME, trust=True)
+    await ops_test.model.deploy(
+        entity_url=entity_url, resources=resources, application_name=APP_NAME, trust=True
+    )
 
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60 * 5)
 

@@ -91,8 +91,17 @@ jobs:
           charmcraft-channel: latest/candidate
           microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
+
+      - name: Download packed charm(s)
+        id: download-charms
+        timeout-minutes: 5
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.artifact-prefix }}-*
+          merge-multiple: true
+
       - run: |
-          sg snap_microk8s -c "tox -vve ${{ matrix.charm }}-integration"
+          sg snap_microk8s -c "tox -vve ${{ matrix.charm }}-integration -- --charm-path=${{ github.workspace }}/charms/${{ matrix.charm }}/${{ matrix.charm }}_ubuntu@20.04-amd64.charm"
 
       # Collect debug logs if failed
       - name: Dump Juju/K8s logs on failure
@@ -118,9 +127,17 @@ jobs:
         juju-channel: 3.6/stable
         microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
+    - name: Download packed charm(s)
+      id: download-charms
+      timeout-minutes: 5
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ${{ inputs.artifact-prefix }}-*
+        merge-multiple: true
+
     - name: Run test
       run: |
-        tox -e integration
+        tox -e integration -- --charms-path=${{ github.workspace }}/charms/
                            
       # On failure, capture debugging resources
     - name: Get all
