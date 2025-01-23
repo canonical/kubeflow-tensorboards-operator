@@ -64,3 +64,9 @@ parts:
       craftctl default
       # Include requirements.txt in *.charm artifact for easier debugging
       cp requirements.txt "$CRAFT_PART_INSTALL/requirements.txt"
+  # "files" part name is arbitrary; use for consistency
+  files:
+    plugin: dump
+    source: .
+    stage:
+      - LICENSE
