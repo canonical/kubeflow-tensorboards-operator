@@ -21,11 +21,12 @@ ISTIO_PILOT = "istio-pilot"
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest):
+async def test_build_and_deploy(ops_test: OpsTest, request):
     """Build and deploy the charm under test.
     Assert on the unit status before ingress relation is set up.
     """
-    # Build and deploy charm from local source folder or use a charm artefact passed using --charm-path
+    # Build and deploy charm from local source folder or use
+    # a charm artefact passed using --charm-path
     entity_url = (
         await ops_test.build_charm(".")
         if not (entity_url := request.config.getoption("--charm-path"))

@@ -74,7 +74,8 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
 
     Assert on the unit status before any relations/configurations take place.
     """
-    # Build and deploy charm from local source folder or use a charm artefact passed using --charm-path
+    # Build and deploy charm from local source folder or use
+    # a charm artefact passed using --charm-path
     entity_url = (
         await ops_test.build_charm(".")
         if not (entity_url := request.config.getoption("--charm-path"))
