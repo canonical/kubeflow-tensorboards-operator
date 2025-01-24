@@ -22,68 +22,6 @@ on:
         value: ${{ jobs.get-charm-paths-channel.outputs.charm-channel }}
 
 jobs:
-  lib-check:
-    name: Check libraries
-    strategy:
-      matrix:
-        charm:
-        - tensorboard-controller
-        - tensorboards-web-app
-    uses: canonical/charmed-kubeflow-workflows/.github/workflows/_quality-checks.yaml@main
-    secrets: inherit
-    with:
-        charm-path: ./charms/${{ matrix.charm }}
-
-  lint:
-    name: Lint Check
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        charm: [tensorboard-controller, tensorboards-web-app]
-
-    steps:
-    - name: Check out code
-      uses: actions/checkout@v3
-
-    - name: Install dependencies
-      run: sudo apt install tox
-
-    - name: Lint code
-      run: tox -vve ${{ matrix.charm }}-lint
-
-  unit:
-    name: Unit Test
-    runs-on: ubuntu-20.04
-    strategy:
-      matrix:
-        charm: [tensorboard-controller, tensorboards-web-app]
-
-    steps:
-    - name: Check out code
-      uses: actions/checkout@v3
-
-    - name: Install dependencies
-      run: sudo apt install tox
-
-    - name: Run unit tests
-      run: tox -vve ${{ matrix.charm }}-unit
-
-  terraform-checks:
-    name: Terraform
-    uses: canonical/charmed-kubeflow-workflows/.github/workflows/terraform-checks.yaml@main
-    strategy:
-      matrix:
-        charm:
-          - tensorboard-controller
-          - tensorboards-web-app
-    with:
-      charm-path: ./charms/${{ matrix.charm }}
-      # Skipping the Terraform apply check as the tensorboard-controller goes to Waiting status
-      # instead of the expected Blocked or Active. This is currently a limitation of the
-      # Terraform re-usable workflows in canonical/charmed-kubeflow-workflows
-      # See https://github.com/canonical/charmed-kubeflow-workflows/issues/65
-      apply: false
-
   get-charm-paths-channel:
     name: Get charm paths and charmhub channel
     runs-on: ubuntu-latest
@@ -100,6 +38,72 @@ jobs:
       - name: Select charmhub channel
         uses: canonical/charming-actions/channel@2.6.2
         id: select-channel
+
+  lib-check:
+    name: Check libraries
+    needs:
+      - get-charm-paths-channel
+    strategy:
+      matrix:
+        charm: ${{ fromJSON(needs.get-charm-paths-channel.outputs.charm-paths) }}
+    uses: canonical/charmed-kubeflow-workflows/.github/workflows/_quality-checks.yaml@main
+    secrets: inherit
+    with:
+        charm-path: ./charms/${{ matrix.charm }}
+
+  lint:
+    name: Lint Check
+    needs:
+      - get-charm-paths-channel
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        charm: ${{ fromJSON(needs.get-charm-paths-channel.outputs.charm-paths) }}
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: sudo apt install tox
+
+    - name: Lint code
+      run: tox -vve ${{ matrix.charm }}-lint
+
+  unit:
+    name: Unit Test
+    needs:
+      - get-charm-paths-channel
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        charm: ${{ fromJSON(needs.get-charm-paths-channel.outputs.charm-paths) }}
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: sudo apt install tox
+
+    - name: Run unit tests
+      run: tox -vve ${{ matrix.charm }}-unit
+
+  terraform-checks:
+    name: Terraform
+    needs:
+      - get-charm-paths-channel
+    uses: canonical/charmed-kubeflow-workflows/.github/workflows/terraform-checks.yaml@main
+    strategy:
+      matrix:
+        charm: ${{ fromJSON(needs.get-charm-paths-channel.outputs.charm-paths) }}
+    with:
+      charm-path: ./charms/${{ matrix.charm }}
+      # Skipping the Terraform apply check as the tensorboard-controller goes to Waiting status
+      # instead of the expected Blocked or Active. This is currently a limitation of the
+      # Terraform re-usable workflows in canonical/charmed-kubeflow-workflows
+      # See https://github.com/canonical/charmed-kubeflow-workflows/issues/65
+      apply: false
 
   build:
     strategy:
