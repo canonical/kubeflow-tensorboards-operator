@@ -12,7 +12,7 @@ TWA_METADATA = yaml.safe_load(Path("charms/tensorboards-web-app/metadata.yaml").
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy_with_relations(ops_test: OpsTest):
+async def test_build_and_deploy_with_relations(ops_test: OpsTest, request):
     if charms_path := request.config.getoption("--charms-path"):
         tensorboard_controller = f"{charms_path}/tensorboard_controller/tensorboard_controller_ubuntu@20.04-amd64.charm"
         tensorboards_web_app = f"{charms_path}/tensorboards-web-app/tensorboards_web_app_ubuntu@20.04-amd64.charm"
