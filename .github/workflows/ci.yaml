@@ -120,7 +120,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        charm: ${{ fromJSON(needs.get-charm-paths-channel.outputs.charm-paths) }}
+        charm: [tensorboard-controller, tensorboards-web-app]
 
     steps:
       - name: Check out code
