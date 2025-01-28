@@ -87,8 +87,6 @@ jobs:
           provider: microk8s
           channel: 1.31-strict/stable
           juju-channel: 3.6/stable
-          # TODO: remove after charmcraft 3.3 stable release
-          charmcraft-channel: latest/candidate
           microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
       - run: |
@@ -113,8 +111,6 @@ jobs:
       with:
         provider: microk8s
         channel: 1.31-strict/stable
-        # TODO: remove after charmcraft 3.3 stable release
-        charmcraft-channel: latest/candidate
         juju-channel: 3.6/stable
         microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
