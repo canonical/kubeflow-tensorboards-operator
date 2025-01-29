@@ -17,7 +17,7 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest, request):
     twa_name = TWA_METADATA["name"]
     if charms_path := request.config.getoption("--charms-path"):
         tensorboard_controller = f"{charms_path}/{tc_app_name}/{tc_app_name}_ubuntu@20.04-amd64.charm"
-        tensorboards_web_app = f"{charms_path}/{tc_app_name}/{twa_name}_ubuntu@20.04-amd64.charm"
+        tensorboards_web_app = f"{charms_path}/{twa_name}/{twa_name}_ubuntu@20.04-amd64.charm"
     else:
         tensorboard_controller = await ops_test.build_charm("charms/tensorboard-controller")
         tensorboards_web_app = await ops_test.build_charm("charms/tensorboards-web-app")
