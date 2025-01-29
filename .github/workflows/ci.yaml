@@ -114,7 +114,7 @@ jobs:
       path-to-charm-directory: ${{ matrix.charm }}
     
   integration:
-    name: Charm-specific Integration tests (microk8s)
+    name: Integration tests (microk8s)
     needs: build
     runs-on: ubuntu-20.04
     strategy:
@@ -218,6 +218,7 @@ jobs:
     name: Release charm to Charmhub branch | ${{ matrix.charm }}
     if: ${{ github.event_name == 'pull_request' }}
     needs:
+      - get-charm-paths-channel
       - build
     uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v29.0.0
     with:
