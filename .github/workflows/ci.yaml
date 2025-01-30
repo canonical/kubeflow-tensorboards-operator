@@ -1,24 +1,55 @@
-# reusable workflow triggered by other actions
 name: CI
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
+  pull_request:
+  schedule:
+    - cron: '0 8 * * TUE'
+  # Triggered on push by .github/workflows/release.yaml
   workflow_call:
-    secrets:
-      CHARMCRAFT_CREDENTIALS:
-        required: true
+    outputs:
+      artifact-prefix:
+        description: build_charm.yaml `artifact-prefix` output
+        value: ${{ jobs.build.outputs.artifact-prefix }}
+      charm-paths:
+        description: paths for all charms in this repo
+        value: ${{ jobs.get-charm-paths-channel.outputs.charm-paths }}
+      channel:
+        description: Charmhub channel the charms are released to
+        value: ${{ jobs.get-charm-paths-channel.outputs.charm-channel }}
 
 jobs:
+  get-charm-paths-channel:
+    name: Get charm paths and charmhub channel
+    runs-on: ubuntu-latest
+    outputs:
+      charm-paths: ${{ steps.get-charm-paths.outputs.charm-paths }}
+      charm-channel: ${{ steps.select-channel.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Get paths for all charms in this repo
+        id: get-charm-paths
+        uses: canonical/kubeflow-ci/actions/get-charm-paths@main
+      - name: Select charmhub channel
+        uses: canonical/charming-actions/channel@2.6.2
+        id: select-channel
+
   lib-check:
     name: Check libraries
+    needs:
+      - get-charm-paths-channel
     strategy:
       matrix:
-        charm:
-        - tensorboard-controller
-        - tensorboards-web-app
+        charm: ${{ fromJSON(needs.get-charm-paths-channel.outputs.charm-paths) }}
     uses: canonical/charmed-kubeflow-workflows/.github/workflows/_quality-checks.yaml@main
     secrets: inherit
     with:
-        charm-path: ./charms/${{ matrix.charm }}
+        charm-path: ${{ matrix.charm }}
 
   lint:
     name: Lint Check
@@ -56,22 +87,34 @@ jobs:
 
   terraform-checks:
     name: Terraform
+    needs:
+      - get-charm-paths-channel
     uses: canonical/charmed-kubeflow-workflows/.github/workflows/terraform-checks.yaml@main
     strategy:
       matrix:
-        charm:
-          - tensorboard-controller
-          - tensorboards-web-app
+        charm: ${{ fromJSON(needs.get-charm-paths-channel.outputs.charm-paths) }}
     with:
-      charm-path: ./charms/${{ matrix.charm }}
+      charm-path: ${{ matrix.charm }}
       # Skipping the Terraform apply check as the tensorboard-controller goes to Waiting status
       # instead of the expected Blocked or Active. This is currently a limitation of the
       # Terraform re-usable workflows in canonical/charmed-kubeflow-workflows
       # See https://github.com/canonical/charmed-kubeflow-workflows/issues/65
       apply: false
+
+  build:
+    strategy:
+      matrix:
+        charm: ${{ fromJSON(needs.get-charm-paths-channel.outputs.charm-paths) }}
+    name: Build charm | ${{ matrix.charm }}
+    needs:
+      - get-charm-paths-channel
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
+    with:
+      path-to-charm-directory: ${{ matrix.charm }}
     
   integration:
-    name: Charm-specific Integration tests (microk8s)
+    name: Integration tests (microk8s)
+    needs: build
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
@@ -87,12 +130,19 @@ jobs:
           provider: microk8s
           channel: 1.31-strict/stable
           juju-channel: 3.6/stable
-          # TODO: remove after charmcraft 3.3 stable release
-          charmcraft-channel: latest/candidate
           microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
+
+      - name: Download packed charm(s)
+        id: download-charms
+        timeout-minutes: 5
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ needs.build.outputs.artifact-prefix }}-*
+          merge-multiple: true
+
       - run: |
-          sg snap_microk8s -c "tox -vve ${{ matrix.charm }}-integration"
+          sg snap_microk8s -c "tox -vve ${{ matrix.charm }}-integration -- --charm-path=${{ github.workspace }}/charms/${{ matrix.charm }}/${{ matrix.charm }}_ubuntu@20.04-amd64.charm"
 
       # Collect debug logs if failed
       - name: Dump Juju/K8s logs on failure
@@ -104,6 +154,7 @@ jobs:
 
   deploy:
     name: Integration Test
+    needs: build
     runs-on: ubuntu-20.04
     steps:
     - name: Check out code
@@ -113,14 +164,20 @@ jobs:
       with:
         provider: microk8s
         channel: 1.31-strict/stable
-        # TODO: remove after charmcraft 3.3 stable release
-        charmcraft-channel: latest/candidate
         juju-channel: 3.6/stable
         microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
+    - name: Download packed charm(s)
+      id: download-charms
+      timeout-minutes: 5
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ${{ needs.build.outputs.artifact-prefix }}-*
+        merge-multiple: true
+
     - name: Run test
       run: |
-        tox -e integration
+        tox -e integration -- --charms-path=${{ github.workspace }}/charms/
                            
       # On failure, capture debugging resources
     - name: Get all
@@ -150,3 +207,21 @@ jobs:
     - name: Get tensorboards-web-app operator logs
       run: kubectl logs -n testing --tail 1000 -ljuju-operator=tensorboards-web-app
       if: failure()
+
+  release:
+    strategy:
+      matrix:
+        charm: ${{ fromJSON(needs.get-charm-paths-channel.outputs.charm-paths) }}
+    name: Release charm to Charmhub branch | ${{ matrix.charm }}
+    if: ${{ github.event_name == 'pull_request' }}
+    needs:
+      - get-charm-paths-channel
+      - build
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v29.0.0
+    with:
+      channel: ${{ needs.get-charm-paths-channel.outputs.charm-channel }}
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+      path-to-charm-directory: ${{ matrix.charm }}
+      create-git-tags: false
+    secrets:
+      charmhub-token: ${{ secrets.CHARMCRAFT_CREDENTIALS }}
