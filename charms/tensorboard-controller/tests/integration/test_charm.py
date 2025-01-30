@@ -69,17 +69,24 @@ def create_tensorboard(ops_test: OpsTest):
 
 @pytest.mark.abort_on_fail
 @pytest.mark.skip_if_deployed
-async def test_build_and_deploy(ops_test: OpsTest):
+async def test_build_and_deploy(ops_test: OpsTest, request):
     """Build the charm-under-test and deploy it together with related charms.
 
     Assert on the unit status before any relations/configurations take place.
     """
-    # Build and deploy charm from local source folder
-    charm = await ops_test.build_charm(".")
+    # Build and deploy charm from local source folder or use
+    # a charm artefact passed using --charm-path
+    entity_url = (
+        await ops_test.build_charm(".")
+        if not (entity_url := request.config.getoption("--charm-path"))
+        else entity_url
+    )
     tb_controller_image = METADATA["resources"]["tensorboard-controller-image"]["upstream-source"]
     resources = {"tensorboard-controller-image": tb_controller_image}
 
-    await ops_test.model.deploy(charm, resources=resources, application_name=APP_NAME, trust=True)
+    await ops_test.model.deploy(
+        entity_url=entity_url, resources=resources, application_name=APP_NAME, trust=True
+    )
 
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME], status="waiting", raise_on_blocked=True, timeout=60 * 5
