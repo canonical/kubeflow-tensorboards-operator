@@ -110,7 +110,6 @@ jobs:
       - get-charm-paths-channel
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
     with:
-      charmcraft-snap-channel: 3.x/stable
       path-to-charm-directory: ${{ matrix.charm }}
     
   integration:
@@ -131,7 +130,6 @@ jobs:
           provider: microk8s
           channel: 1.31-strict/stable
           juju-channel: 3.6/stable
-          charmcraft-channel: 3.x/stable
           microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
 
@@ -166,7 +164,6 @@ jobs:
       with:
         provider: microk8s
         channel: 1.31-strict/stable
-        charmcraft-channel: 3.x/stable
         juju-channel: 3.6/stable
         microk8s-addons: dns hostpath-storage ingress metallb:10.64.140.43-10.64.140.49
 
@@ -222,7 +219,6 @@ jobs:
       - build
     uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v29.0.0
     with:
-      charmcraft-snap-channel: 3.x/stable
       channel: ${{ needs.get-charm-paths-channel.outputs.charm-channel }}
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       path-to-charm-directory: ${{ matrix.charm }}
