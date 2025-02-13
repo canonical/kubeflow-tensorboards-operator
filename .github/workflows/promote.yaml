@@ -19,7 +19,7 @@ jobs:
     name: Promote charm
     runs-on: ubuntu-20.04
     env:
-      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_CREDENTIALS }})
+      CHARMCRAFT_AUTH: ${{ secrets.CHARMCRAFT_CREDENTIALS }}
     steps:
       - name: Release charm to channel
         run: |
