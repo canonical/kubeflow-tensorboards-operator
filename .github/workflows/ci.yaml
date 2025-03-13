@@ -158,7 +158,7 @@ jobs:
           merge-multiple: true
 
       - run: |
-          tox -vve ${{ matrix.charm }}-integration -- --charm-path=${{ github.workspace }}/charms/${{ matrix.charm }}/${{ matrix.charm }}_ubuntu@24.04-amd64.charm
+          tox -vve ${{ matrix.charm }}-integration -- --charm-path=${{ github.workspace }}/charms/${{ matrix.charm }}/${{ matrix.charm }}_ubuntu@20.04-amd64.charm
 
       # Collect debug logs if failed
       - name: Dump Juju/K8s logs on failure
