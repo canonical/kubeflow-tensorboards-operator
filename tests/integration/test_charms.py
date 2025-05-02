@@ -37,13 +37,13 @@ async def test_build_and_deploy_with_relations(ops_test: OpsTest, request):
     await ops_test.model.deploy(
         entity_url="istio-gateway",
         application_name=istio_gateway,
-        channel="latest/edge",
+        channel="1.24/stable",
         config={"kind": "ingress"},
         trust=True,
     )
     await ops_test.model.deploy(
         istio_pilot,
-        channel="latest/edge",
+        channel="1.24/stable",
         config={"default-gateway": "test-gateway"},
         trust=True,
     )
