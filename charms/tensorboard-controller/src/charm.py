@@ -15,9 +15,9 @@ from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError, Gatew
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from lightkube.models.core_v1 import ServicePort
 from lightkube import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
+from lightkube.models.core_v1 import ServicePort
 from lightkube.resources.apiextensions_v1 import CustomResourceDefinition
 from lightkube.resources.rbac_authorization_v1 import ClusterRole, ClusterRoleBinding
 from ops import main
