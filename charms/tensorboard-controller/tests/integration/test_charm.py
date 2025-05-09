@@ -14,6 +14,7 @@ from charmed_kubeflow_chisme.testing import (
     deploy_and_assert_grafana_agent,
     get_alert_rules,
 )
+from charms_dependencies import ISTIO_GATEWAY, ISTIO_PILOT
 from lightkube import ApiError, Client, codecs
 from lightkube.generic_resource import (
     create_namespaced_resource,
@@ -42,8 +43,7 @@ TENSORBOARD_RESOURCE = create_namespaced_resource(
     plural="tensorboards",
 )
 
-ISTIO_GATEWAY = "istio-ingressgateway"
-ISTIO_PILOT = "istio-pilot"
+ISTIO_GATEWAY_APP_NAME = "istio-ingressgateway"
 
 
 @pytest.fixture(scope="module")
@@ -109,7 +109,7 @@ async def test_istio_gateway_info_relation(ops_test: OpsTest):
     await setup_istio(ops_test, ISTIO_GATEWAY, ISTIO_PILOT)
 
     # add Tensorboard-Controller/Istio relation
-    await ops_test.model.integrate(f"{ISTIO_PILOT}:gateway-info", f"{APP_NAME}:gateway-info")
+    await ops_test.model.integrate(f"{ISTIO_PILOT.charm}:gateway-info", f"{APP_NAME}:gateway-info")
 
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=60 * 5
