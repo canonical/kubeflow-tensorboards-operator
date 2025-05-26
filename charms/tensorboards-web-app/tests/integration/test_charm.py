@@ -108,7 +108,7 @@ async def setup_istio(ops_test: OpsTest, istio_gateway: CharmSpec, istio_pilot: 
         apps=[istio_pilot.charm, istio_gateway.charm],
         status="active",
         raise_on_blocked=False,
-        timeout=60 * 20,
+        timeout=60 * 5,
     )
 
 
