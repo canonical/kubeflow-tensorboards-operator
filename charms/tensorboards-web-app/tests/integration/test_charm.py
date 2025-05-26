@@ -107,7 +107,6 @@ async def setup_istio(ops_test: OpsTest, istio_gateway: CharmSpec, istio_pilot: 
     await ops_test.model.wait_for_idle(
         apps=[istio_pilot.charm, istio_gateway.charm],
         status="active",
-        raise_on_blocked=False,
         timeout=60 * 5,
     )
 
