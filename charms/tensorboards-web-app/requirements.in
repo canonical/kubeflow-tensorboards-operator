@@ -3,7 +3,7 @@
 
 ops
 oci-image
-charmed-kubeflow-chisme
+charmed-kubeflow-chisme>=0.4.11
 lightkube
 serialized-data-interface
 # from loki_k8s.v1.loki_push_api.py
