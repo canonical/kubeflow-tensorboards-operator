@@ -20,8 +20,8 @@ from lightkube import ApiError
 from lightkube.generic_resource import load_in_cluster_generic_resources
 from lightkube.resources.apiextensions_v1 import CustomResourceDefinition
 from lightkube.resources.rbac_authorization_v1 import ClusterRole, ClusterRoleBinding
+from ops import main
 from ops.charm import CharmBase
-from ops.main import main
 from ops.model import ActiveStatus, Container, MaintenanceStatus, WaitingStatus
 from ops.pebble import Layer
 
