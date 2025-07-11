@@ -63,7 +63,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install dependencies
-      run: pip install tox
+      run: pipx install tox
 
     - name: Lint code
       run: tox -vve ${{ matrix.charm }}-lint
@@ -80,7 +80,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install dependencies
-      run: pip install tox
+      run: pipx install tox
 
     - name: Run unit tests
       run: tox -vve ${{ matrix.charm }}-unit

@@ -1,9 +1,0 @@
-# Copyright 2024 Canonical Ltd.
-# See LICENSE file for licensing details.
-# Pin charmed-kubeflow-chisme due to
-# https://github.com/canonical/charmed-kubeflow-chisme/issues/155
-charmed-kubeflow-chisme>=0.4.11
-lightkube
-ops
-# from loki_k8s.v1.loki_push_api.py
-cosl
