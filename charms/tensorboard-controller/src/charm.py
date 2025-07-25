@@ -41,9 +41,6 @@ CRD_RESOURCES = {
     "scope": "tensorboard",
 }
 
-TENSORBOARD_IMAGE = "tensorflow/tensorflow:2.5.1"
-
-
 class TensorboardController(CharmBase):
     """Tensorboard Controller Charmed Operator."""
 
@@ -132,7 +129,7 @@ class TensorboardController(CharmBase):
             "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
             "ISTIO_HOST": "*",
             "RWO_PVC_SCHEDULING": "True",
-            "TENSORBOARD_IMAGE": TENSORBOARD_IMAGE,
+            "TENSORBOARD_IMAGE": self.model.config["tensorboard-image"],
         }
 
         return ret_env_vars
