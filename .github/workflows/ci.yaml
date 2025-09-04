@@ -29,7 +29,7 @@ jobs:
       charm-paths: ${{ steps.get-charm-paths.outputs.charm-paths }}
       charm-channel: ${{ steps.select-channel.outputs.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Get paths for all charms in this repo
@@ -60,7 +60,7 @@ jobs:
 
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install dependencies
       run: pipx install tox
@@ -77,7 +77,7 @@ jobs:
 
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Install dependencies
       run: pipx install tox
@@ -124,7 +124,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Install dependencies
         run: pipx install tox
 
@@ -161,7 +161,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
     - name: Install dependencies
       run: pipx install tox
 
