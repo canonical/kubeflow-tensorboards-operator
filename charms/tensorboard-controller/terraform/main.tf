@@ -1,6 +1,7 @@
 resource "juju_application" "tensorboard_controller" {
   charm {
     name     = "tensorboard-controller"
+    base     = var.base
     channel  = var.channel
     revision = var.revision
   }
