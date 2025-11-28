@@ -13,6 +13,9 @@ minversion = "6.0"
 log_cli_level = "INFO"
 
 # Formatting tools configuration
+[tool.pyright]
+extraPaths = ["lib"]
+
 [tool.black]
 line-length = 99
 target-version = ["py38"]
@@ -46,12 +49,15 @@ package-mode = false
 optional = true
 
 [tool.poetry.group.charm.dependencies]
-charmed-kubeflow-chisme = ">=0.4.14"
+charmed-kubeflow-chisme = ">=0.4.18"
 cosl = "^0.0.45"
 lightkube = "^0.15.6"
 oci-image = "^1.0.0"
 ops = "^2.17.1"
 serialized-data-interface = "^0.7.0"
+pydantic = "^2.11.7"
+charmed-service-mesh-helpers = ">=0.2.0"
+lightkube-extensions = ">=0.2.0"
 
 [tool.poetry.group.fmt]
 optional = true
@@ -89,7 +95,7 @@ optional = true
 
 [tool.poetry.group.integration.dependencies]
 juju = "<4.0"
-charmed-kubeflow-chisme = ">=0.4.14"
+charmed-kubeflow-chisme = ">=0.4.18"
 aiohttp = "^3.10.11"
 pytest = "^8.3.4"
 pytest-operator = "^0.38.0"
