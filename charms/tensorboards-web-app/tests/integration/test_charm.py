@@ -50,14 +50,20 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
     resources = {f"{APP_NAME}-image": image_path}
 
     await ops_test.model.deploy(
-        entity_url=entity_url, resources=resources, application_name=APP_NAME, trust=True
+        entity_url=entity_url,
+        resources=resources,
+        application_name=APP_NAME,
+        trust=True,
     )
 
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60 * 5)
 
     unit = ops_test.model.applications[APP_NAME].units[0]
     assert unit.workload_status == "blocked"
-    assert unit.workload_status_message == "Please relate to istio-pilot:ingress"
+    assert (
+        unit.workload_status_message
+        == "None of 'istio-ingress-route' or 'ingress' relations found."
+    )
 
     # Deploying grafana-agent-k8s and add all relations
     await deploy_and_assert_grafana_agent(
