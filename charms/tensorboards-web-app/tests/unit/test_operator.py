@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
-from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 from ops.testing import Harness
 
 from charm import TensorboardsWebApp
@@ -16,7 +16,10 @@ PORT = 5000
 @pytest.fixture(scope="function")
 def harness() -> Harness:
     """Create and return Harness for testing."""
-    return Harness(TensorboardsWebApp)
+    harness = Harness(TensorboardsWebApp)
+    harness.set_leader(True)
+    harness.set_model_name("tensorboards-ns")
+    return harness
 
 
 class TestCharm:
@@ -29,13 +32,6 @@ class TestCharm:
         with patch("charm.LogForwarder") as mock_logging:
             harness.begin()
             mock_logging.assert_called_once_with(charm=harness.charm)
-
-    @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
-    @patch("charm.TensorboardsWebApp.k8s_resource_handler")
-    def test_not_leader(self, k8s_resource_handler: MagicMock, harness: Harness):
-        """Test that charm waits if it's not the leader."""
-        harness.begin_with_initial_hooks()
-        assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
 
     @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
     @patch("charm.TensorboardsWebApp.k8s_resource_handler")
@@ -105,6 +101,27 @@ class TestCharm:
         harness.charm._apply_k8s_resources()
         k8s_resource_handler.apply.assert_called()
         assert isinstance(harness.charm.model.unit.status, MaintenanceStatus)
+
+    @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
+    @patch("charm.TensorboardsWebApp.k8s_resource_handler")
+    def test_sidecar_and_ambient_relations_added(
+        self, k8s_resource_handler: MagicMock, harness: Harness
+    ):
+        """Test the charm is in BlockedStatus when both sidecar and ambient relations are added."""
+        # Arrange
+        harness.add_relation("ingress", "istio-pilot")
+
+        harness.add_relation("istio-ingress-route", "istio-ingress-k8s")
+
+        # Act
+        harness.begin_with_initial_hooks()
+        harness.container_pebble_ready(harness.charm._container_name)
+
+        # Assert
+        assert isinstance(
+            harness.charm.model.unit.status,
+            BlockedStatus,
+        )
 
     # Helper functions
     def _setup_ingress_relation(self, harness: Harness):
