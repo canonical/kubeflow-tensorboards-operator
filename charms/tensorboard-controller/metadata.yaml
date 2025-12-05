@@ -10,6 +10,8 @@ docs: https://discourse.charmhub.io/t/charmed-tensorboard-controller/8239
 containers:
   tensorboard-controller:
     resource: tensorboard-controller-image
+    uid: 584792
+    gid: 584792
 resources:
   tensorboard-controller-image:
     type: oci-image
@@ -25,3 +27,4 @@ requires:
 provides:
   metrics-endpoint:
     interface: prometheus_scrape
+charm-user: non-root

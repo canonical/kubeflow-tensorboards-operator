@@ -41,6 +41,7 @@ CRD_RESOURCES = {
     "scope": "tensorboard",
 }
 
+
 class TensorboardController(CharmBase):
     """Tensorboard Controller Charmed Operator."""
 
