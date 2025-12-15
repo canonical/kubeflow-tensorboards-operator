@@ -187,6 +187,7 @@ class TensorboardsWebApp(CharmBase):
         return Layer(layer_config)
 
     def _ambient_ingress_setup(self):
+        """Submit the Ingress configuration for Ambient Mesh, if unit is leader."""
         http_listener = Listener(port=80, protocol=ProtocolType.HTTP)
 
         config = IstioIngressRouteConfig(
