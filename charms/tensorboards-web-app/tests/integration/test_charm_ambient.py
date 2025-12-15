@@ -21,6 +21,7 @@ APP_NAME = "tensorboards-web-app"
 PORT = 5000
 HTTP_PATH = "/tensorboards/"
 HEADERS = {"kubeflow-userid": "test"}
+EXPECTED_RESPONSE_TEXT = "Tensorboards Manager UI"
 
 
 @pytest.mark.abort_on_fail
@@ -67,4 +68,6 @@ async def test_ui_is_accessible(ops_test: OpsTest):
         namespace=ops_test.model_name,
         headers=HEADERS,
         expected_status=200,
+        expected_content_type="text/html",
+        expected_response_text=EXPECTED_RESPONSE_TEXT,
     )
