@@ -233,8 +233,7 @@ class TensorboardsWebApp(CharmBase):
 
         if not ambient_relation and not sidecar_relation:
             self.logger.error(
-                "None of 'istio-ingress-route' or 'ingress' relations are present, "
-                "relate at least one."
+                "None of 'istio-ingress-route' or 'ingress' relations are present, please relate one."
             )
             raise ErrorWithStatus(
                 "None of 'istio-ingress-route' or 'ingress' relations found.",
