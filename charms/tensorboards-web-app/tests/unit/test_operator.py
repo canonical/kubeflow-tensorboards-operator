@@ -119,7 +119,6 @@ class TestCharm:
 
         # Act
         harness.begin_with_initial_hooks()
-        harness.container_pebble_ready(harness.charm._container_name)
 
         # Assert
         assert isinstance(
