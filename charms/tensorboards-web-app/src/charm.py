@@ -76,6 +76,13 @@ class TensorboardsWebApp(CharmBase):
             self, [http_service_port], service_name=f"{self._name}"
         )
 
+        # ambient mesh
+        if self.unit.is_leader():
+            self._mesh = ServiceMeshConsumer(self)
+            self.ingress = IstioIngressRouteRequirer(self, relation_name="istio-ingress-route")
+            self._ambient_ingress_setup()
+            self.framework.observe(self.ingress.on.ready, self._on_event)
+
         # Set up event handlers
         self.framework.observe(self.on.upgrade_charm, self._on_event)
         self.framework.observe(self.on.config_changed, self._on_event)
@@ -102,12 +109,6 @@ class TensorboardsWebApp(CharmBase):
         )
 
         self._logging = LogForwarder(charm=self)
-
-        # ambient mesh
-        if self.unit.is_leader():
-            self._mesh = ServiceMeshConsumer(self)
-            self.ingress = IstioIngressRouteRequirer(self, relation_name="istio-ingress-route")
-            self._ambient_ingress_setup()
 
     @property
     def container(self) -> Container:
