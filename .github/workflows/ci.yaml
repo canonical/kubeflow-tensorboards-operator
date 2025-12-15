@@ -143,6 +143,8 @@ jobs:
         test-type:
           - integration
           - integration-ambient
+        # TODO: Remove this once we also integrate the tensorboard controller
+        # https://github.com/canonical/kubeflow-tensorboards-operator/issues/228
         exclude:
           - charm: tensorboard-controller
             test-type: integration-ambient
