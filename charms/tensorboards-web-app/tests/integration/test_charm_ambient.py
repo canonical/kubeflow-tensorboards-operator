@@ -29,6 +29,13 @@ HEADERS = {"kubeflow-userid": "test"}
 EXPECTED_RESPONSE_TEXT = "Tensorboards Manager UI"
 
 
+@pytest.fixture(scope="session")
+def lightkube_client() -> Client:
+    """Returns lightkube Kubernetes client"""
+    client = Client(field_manager=f"{APP_NAME}")
+    return client
+
+
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, request):
     """Build and deploy the charm under test.
