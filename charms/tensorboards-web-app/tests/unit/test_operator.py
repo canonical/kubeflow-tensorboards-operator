@@ -16,7 +16,10 @@ PORT = 5000
 @pytest.fixture(scope="function")
 def harness() -> Harness:
     """Create and return Harness for testing."""
-    return Harness(TensorboardsWebApp)
+    harness = Harness(TensorboardsWebApp)
+    harness.set_leader(True)
+    harness.set_model_name("tensorboards-ns")
+    return harness
 
 
 class TestCharm:
@@ -34,6 +37,7 @@ class TestCharm:
     @patch("charm.TensorboardsWebApp.k8s_resource_handler")
     def test_not_leader(self, k8s_resource_handler: MagicMock, harness: Harness):
         """Test that charm waits if it's not the leader."""
+        harness.set_leader(False)
         harness.begin_with_initial_hooks()
         assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
 
@@ -41,17 +45,15 @@ class TestCharm:
     @patch("charm.TensorboardsWebApp.k8s_resource_handler")
     def test_no_relation(self, k8s_resource_handler: MagicMock, harness: Harness):
         """Test that charm is blocked when there is no ingress relation."""
-        harness.set_leader(True)
         harness.begin_with_initial_hooks()
         assert harness.charm.model.unit.status == BlockedStatus(
-            "Please relate to istio-pilot:ingress"
+            "None of 'istio-ingress-route' or 'ingress' relations found."
         )
 
     @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
     @patch("charm.TensorboardsWebApp.k8s_resource_handler")
     def test_with_relation(self, k8s_resource_handler: MagicMock, harness: Harness):
         """Test that charm is active when there is an ingress relation"""
-        harness.set_leader(True)
         self._setup_ingress_relation(harness)
         harness.begin_with_initial_hooks()
 
@@ -61,7 +63,6 @@ class TestCharm:
     @patch("charm.TensorboardsWebApp.k8s_resource_handler")
     def test_relation_data(self, k8s_resource_handler: MagicMock, harness: Harness):
         """Test that charm has the expected relation data"""
-        harness.set_leader(True)
         rel_id = self._setup_ingress_relation(harness)
         harness.begin_with_initial_hooks()
 
@@ -78,7 +79,6 @@ class TestCharm:
     @patch("charm.TensorboardsWebApp.k8s_resource_handler")
     def test_pebble_layer(self, k8s_resource_handler: MagicMock, harness: Harness):
         """Test the creation of Pebble layer and some of its fields."""
-        harness.set_leader(True)
         harness.set_model_name("kubeflow")
         self._setup_ingress_relation(harness)
         harness.begin_with_initial_hooks()
@@ -105,6 +105,26 @@ class TestCharm:
         harness.charm._apply_k8s_resources()
         k8s_resource_handler.apply.assert_called()
         assert isinstance(harness.charm.model.unit.status, MaintenanceStatus)
+
+    @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
+    @patch("charm.TensorboardsWebApp.k8s_resource_handler")
+    def test_sidecar_and_ambient_relations_added(
+        self, k8s_resource_handler: MagicMock, harness: Harness
+    ):
+        """Test the charm is in BlockedStatus when both sidecar and ambient relations are added."""
+        # Arrange
+        harness.add_relation("ingress", "istio-pilot")
+
+        harness.add_relation("istio-ingress-route", "istio-ingress-k8s")
+
+        # Act
+        harness.begin_with_initial_hooks()
+
+        # Assert
+        assert isinstance(
+            harness.charm.model.unit.status,
+            BlockedStatus,
+        )
 
     # Helper functions
     def _setup_ingress_relation(self, harness: Harness):

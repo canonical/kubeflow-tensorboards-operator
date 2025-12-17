@@ -40,20 +40,20 @@ jobs:
         shell: python
         run: |
           import os
-          
+
           if "${{ github.event_name }}" == "pull_request":
               ref = "${{ github.base_ref }}"
           else:
               ref = "${{ github.ref_name }}"
-          
+
           if ref.startswith("track/"):
               track = ref.removeprefix("track/")
           else:
               track = "latest"
-          
+
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               f.write(f"track={track}\n")
-          
+
           print(f"Track: {track}")
 
   lib-check:
@@ -129,7 +129,7 @@ jobs:
     with:
       path-to-charm-directory: ${{ matrix.charm }}
       cache: true
-    
+
   integration:
     name: Integration tests (microk8s)
     needs: build
@@ -137,7 +137,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        charm: [tensorboard-controller, tensorboards-web-app]
+        charm:
+          - tensorboard-controller
+          - tensorboards-web-app
+        test-type:
+          - integration
+          - integration-ambient
+        # TODO: Remove this once we also integrate the tensorboard controller
+        # https://github.com/canonical/kubeflow-tensorboards-operator/issues/228
+        exclude:
+          - charm: tensorboard-controller
+            test-type: integration-ambient
 
     steps:
       - name: Check out code
@@ -162,7 +172,7 @@ jobs:
           merge-multiple: true
 
       - run: |
-          tox -vve ${{ matrix.charm }}-integration -- --charm-path=${{ github.workspace }}/charms/${{ matrix.charm }}/${{ matrix.charm }}_ubuntu@24.04-amd64.charm
+          tox -vve ${{ matrix.charm }}-${{ matrix.test-type }} -- --charm-path=${{ github.workspace }}/charms/${{ matrix.charm }}/${{ matrix.charm }}_ubuntu@24.04-amd64.charm
 
       # Collect debug logs if failed
       - name: Dump Juju/K8s logs on failure
@@ -200,7 +210,7 @@ jobs:
     - name: Run test
       run: |
         tox -e integration -- --charms-path=${{ github.workspace }}/charms/
-                           
+
       # On failure, capture debugging resources
     - name: Get all
       run: kubectl get all -A

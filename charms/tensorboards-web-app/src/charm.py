@@ -14,8 +14,22 @@ from charmed_kubeflow_chisme.kubernetes import (
     KubernetesResourceHandler,
     create_charm_default_labels,
 )
-from charmed_kubeflow_chisme.lightkube.batch import delete_many
 from charmed_kubeflow_chisme.pebble import update_layer
+from charms.istio_beacon_k8s.v0.service_mesh import ServiceMeshConsumer
+from charms.istio_ingress_k8s.v0.istio_ingress_route import (
+    BackendRef,
+    HTTPPathMatch,
+    HTTPRoute,
+    HTTPRouteMatch,
+    IstioIngressRouteConfig,
+    IstioIngressRouteRequirer,
+    Listener,
+    PathModifier,
+    PathModifierType,
+    ProtocolType,
+    URLRewriteFilter,
+    URLRewriteSpec,
+)
 from charms.kubeflow_dashboard.v0.kubeflow_dashboard_links import (
     DashboardLink,
     KubeflowDashboardLinksRequirer,
@@ -61,6 +75,13 @@ class TensorboardsWebApp(CharmBase):
         self.service_patcher = KubernetesServicePatch(
             self, [http_service_port], service_name=f"{self._name}"
         )
+
+        # ambient mesh
+        if self.unit.is_leader():
+            self._mesh = ServiceMeshConsumer(self)
+            self.ingress = IstioIngressRouteRequirer(self, relation_name="istio-ingress-route")
+            self._ambient_ingress_setup()
+            self.framework.observe(self.ingress.on.ready, self._on_event)
 
         # Set up event handlers
         self.framework.observe(self.on.upgrade_charm, self._on_event)
@@ -140,9 +161,7 @@ class TensorboardsWebApp(CharmBase):
     @property
     def _tensorboards_web_app_layer(self) -> Layer:
         """Create and return Pebble framework layer."""
-        exec_command = (
-            "gunicorn" " -w 3" f" --bind 0.0.0.0:{PORT}" " --access-logfile" " - entrypoint:app"
-        )
+        exec_command = f"gunicorn -w 3 --bind 0.0.0.0:{PORT} --access-logfile - entrypoint:app"
 
         layer_config = {
             "summary": "tensorboards-web-app layer",
@@ -168,6 +187,59 @@ class TensorboardsWebApp(CharmBase):
 
         return Layer(layer_config)
 
+    def _ambient_ingress_setup(self):
+        """Submit the Ingress configuration for Ambient Mesh, if unit is leader."""
+        http_listener = Listener(port=80, protocol=ProtocolType.HTTP)
+
+        config = IstioIngressRouteConfig(
+            model=self.model.name,
+            listeners=[http_listener],
+            http_routes=[
+                HTTPRoute(
+                    name="http-ingress",
+                    listener=http_listener,
+                    matches=[HTTPRouteMatch(path=HTTPPathMatch(value="/tensorboards/"))],
+                    filters=[
+                        URLRewriteFilter(
+                            urlRewrite=URLRewriteSpec(
+                                path=PathModifier(
+                                    type=PathModifierType.ReplacePrefixMatch, value="/"
+                                )
+                            )
+                        )
+                    ],
+                    backends=[BackendRef(service=self.app.name, port=PORT)],
+                )
+            ],
+        )
+
+        self.ingress.submit_config(config)
+
+    def _check_istio_relations(self):
+        """Check that both ambient and sidecar relations are not present simultaneously."""
+        ambient_relation = self.model.get_relation("istio-ingress-route")
+        sidecar_relation = self.model.get_relation("ingress")
+
+        if ambient_relation and sidecar_relation:
+            self.logger.error(
+                "Both 'istio-ingress-route' and 'ingress' relations are present, "
+                "remove one to unblock."
+            )
+            raise ErrorWithStatus(
+                "Cannot have both 'istio-ingress-route' and 'ingress' relations "
+                "at the same time.",
+                BlockedStatus,
+            )
+
+        if not ambient_relation and not sidecar_relation:
+            self.logger.error(
+                "None of 'istio-ingress-route' or 'ingress' relations are present, please relate one."
+            )
+            raise ErrorWithStatus(
+                "None of 'istio-ingress-route' or 'ingress' relations found.",
+                BlockedStatus,
+            )
+
     def _on_install(self, _) -> None:
         """Perform installation only actions."""
         try:
@@ -192,6 +264,7 @@ class TensorboardsWebApp(CharmBase):
         """Perform required actions for every event."""
         try:
             self._check_leader()
+            self._check_istio_relations()
             self._apply_k8s_resources()
             update_layer(
                 self._container_name,
@@ -200,7 +273,7 @@ class TensorboardsWebApp(CharmBase):
                 self.logger,
             )
             interfaces = self._get_interfaces()
-            self._configure_mesh(interfaces)
+            self._configure_sidecar_mesh(interfaces)
             self.unit.status = ActiveStatus()
 
         except ErrorWithStatus as error:
@@ -218,7 +291,7 @@ class TensorboardsWebApp(CharmBase):
             raise ErrorWithStatus("Applying K8S resources failed", BlockedStatus)
         self._log_and_set_status(MaintenanceStatus("K8S resources applied"))
 
-    def _configure_mesh(self, interfaces) -> None:
+    def _configure_sidecar_mesh(self, interfaces) -> None:
         if interfaces["ingress"]:
             interfaces["ingress"].send_data(
                 {
@@ -228,8 +301,6 @@ class TensorboardsWebApp(CharmBase):
                     "port": PORT,
                 }
             )
-        else:
-            raise ErrorWithStatus("Please relate to istio-pilot:ingress", BlockedStatus)
 
     def _check_leader(self) -> None:
         """Check if this unit is a leader."""
