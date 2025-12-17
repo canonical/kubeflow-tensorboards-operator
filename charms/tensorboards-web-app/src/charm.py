@@ -213,8 +213,7 @@ class TensorboardsWebApp(CharmBase):
             ],
         )
 
-        if self.unit.is_leader():
-            self.ingress.submit_config(config)
+        self.ingress.submit_config(config)
 
     def _check_istio_relations(self):
         """Check that both ambient and sidecar relations are not present simultaneously."""
