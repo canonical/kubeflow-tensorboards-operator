@@ -9,9 +9,13 @@ import yaml
 from charmed_kubeflow_chisme.testing import (
     assert_logging,
     assert_path_reachable_through_ingress,
+    assert_security_context,
     deploy_and_assert_grafana_agent,
     deploy_and_integrate_service_mesh_charms,
+    generate_container_securitycontext_map,
+    get_pod_names,
 )
+from lightkube import Client
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
@@ -19,6 +23,7 @@ logger = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = "tensorboards-web-app"
 PORT = 5000
+CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADATA)
 HTTP_PATH = "/tensorboards/"
 HEADERS = {"kubeflow-userid": "test"}
 EXPECTED_RESPONSE_TEXT = "Tensorboards Manager UI"
@@ -70,4 +75,25 @@ async def test_ui_is_accessible(ops_test: OpsTest):
         expected_status=200,
         expected_content_type="text/html",
         expected_response_text=EXPECTED_RESPONSE_TEXT,
+    )
+
+
+@pytest.mark.parametrize("container_name", list(CONTAINERS_SECURITY_CONTEXT_MAP.keys()))
+async def test_container_security_context(
+    ops_test: OpsTest,
+    lightkube_client: Client,
+    container_name: str,
+):
+    """Test container security context is correctly set.
+
+    Verify that container spec defines the security context with correct
+    user ID and group ID.
+    """
+    pod_name = get_pod_names(ops_test.model.name, APP_NAME)[0]
+    assert_security_context(
+        lightkube_client,
+        pod_name,
+        container_name,
+        CONTAINERS_SECURITY_CONTEXT_MAP,
+        ops_test.model.name,
     )
