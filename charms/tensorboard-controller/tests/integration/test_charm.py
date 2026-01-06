@@ -98,9 +98,7 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
         entity_url=entity_url, resources=resources, application_name=APP_NAME, trust=True
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="blocked", timeout=60 * 5
-    )
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60 * 5)
 
     unit = ops_test.model.applications[APP_NAME].units[0]
     assert unit.workload_status == "blocked"
@@ -121,9 +119,7 @@ async def test_istio_gateway_info_relation(ops_test: OpsTest):
     # add Tensorboard-Controller/Istio relation
     await ops_test.model.integrate(f"{ISTIO_PILOT.charm}:gateway-info", f"{APP_NAME}:gateway-info")
 
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=60 * 5
-    )
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=60 * 5)
 
 
 async def test_create_tensorboard(ops_test: OpsTest, create_tensorboard, lightkube_client: Client):
