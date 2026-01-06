@@ -38,6 +38,9 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADATA)
 
+SERVICE_MESH_ENDPOINT = "service-mesh"
+GATEWAY_METADATA_ENDPOINT = "gateway-metadata"
+
 PVC_NAME = "dummy-pvc"
 TENSORBOARD_NAME = "dummy-tensorboard"
 TENSORBOARD_RESOURCE = create_namespaced_resource(
@@ -96,13 +99,11 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
         entity_url=entity_url, resources=resources, application_name=APP_NAME, trust=True
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="waiting", raise_on_blocked=True, timeout=60 * 5
-    )
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60 * 5)
 
     unit = ops_test.model.applications[APP_NAME].units[0]
-    assert unit.workload_status == "waiting"
-    assert unit.workload_status_message == "Waiting for gateway info relation"
+    assert unit.workload_status == "blocked"
+    assert unit.workload_status_message == "Missing required gateway relation"
 
     # Deploying grafana-agent-k8s and add all relations
     await deploy_and_assert_grafana_agent(
@@ -118,16 +119,20 @@ async def test_istio_gateway_info_relation(ops_test: OpsTest):
         app=APP_NAME,
         model=ops_test.model,
         relate_to_ingress=False,
+        relate_to_beacon=False,
+    )
+
+    await ops_test.model.integrate(
+        f"istio-beacon-k8s:{SERVICE_MESH_ENDPOINT}", f"{APP_NAME}:{SERVICE_MESH_ENDPOINT}"
     )
 
     # add Tensorboard-Controller/Istio Gateway relation
     await ops_test.model.integrate(
-        "istio-ingress-k8s:gateway-metadata", f"{APP_NAME}:gateway-metadata"
+        f"istio-ingress-k8s:{GATEWAY_METADATA_ENDPOINT}",
+        f"{APP_NAME}:{GATEWAY_METADATA_ENDPOINT}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=60 * 5
-    )
+    await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=60 * 5)
 
 
 async def test_create_tensorboard(ops_test: OpsTest, create_tensorboard, lightkube_client: Client):

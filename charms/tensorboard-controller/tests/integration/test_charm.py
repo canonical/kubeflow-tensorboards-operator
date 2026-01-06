@@ -99,12 +99,12 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
     )
 
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="waiting", raise_on_blocked=True, timeout=60 * 5
+        apps=[APP_NAME], status="blocked", raise_on_blocked=True, timeout=60 * 5
     )
 
     unit = ops_test.model.applications[APP_NAME].units[0]
-    assert unit.workload_status == "waiting"
-    assert unit.workload_status_message == "Waiting for gateway info relation"
+    assert unit.workload_status == "blocked"
+    assert unit.workload_status_message == "Missing required gateway relation"
 
     # Deploying grafana-agent-k8s and add all relations
     await deploy_and_assert_grafana_agent(
