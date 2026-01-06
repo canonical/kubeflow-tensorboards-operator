@@ -99,7 +99,7 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
     )
 
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="blocked", raise_on_blocked=True, timeout=60 * 5
+        apps=[APP_NAME], status="blocked", timeout=60 * 5
     )
 
     unit = ops_test.model.applications[APP_NAME].units[0]
