@@ -78,12 +78,11 @@ class TensorboardController(CharmBase):
         # ambient
         self.ambient_gateway = GatewayMetadataRequirer(self, relation_name="gateway-metadata")
 
-        ServiceMeshConsumer(
+        self._mesh = ServiceMeshConsumer(
             self,
             policies=[
                 UnitPolicy(
                     relation="metrics-endpoint",
-                    ports=[METRICS_PORT],
                 ),
             ],
         )
