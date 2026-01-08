@@ -114,22 +114,12 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
 @pytest.mark.abort_on_fail
 async def test_istio_gateway_info_relation(ops_test: OpsTest):
     """Setup Istio and relate it to the Tensorboard Controller."""
-    # setup Istio
     await deploy_and_integrate_service_mesh_charms(
         app=APP_NAME,
         model=ops_test.model,
-        relate_to_ingress=False,
-        relate_to_beacon=False,
-    )
-
-    await ops_test.model.integrate(
-        f"istio-beacon-k8s:{SERVICE_MESH_ENDPOINT}", f"{APP_NAME}:{SERVICE_MESH_ENDPOINT}"
-    )
-
-    # add Tensorboard-Controller/Istio Gateway relation
-    await ops_test.model.integrate(
-        f"istio-ingress-k8s:{GATEWAY_METADATA_ENDPOINT}",
-        f"{APP_NAME}:{GATEWAY_METADATA_ENDPOINT}",
+        relate_to_ingress_route_endpoint=False,
+        relate_to_ingress_gateway_endpoint=True,
+        relate_to_beacon=True,
     )
 
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=60 * 5)
