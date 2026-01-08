@@ -76,7 +76,9 @@ class TensorboardController(CharmBase):
         self.sidecar_gateway = GatewayRequirer(self)
 
         # ambient
-        self.ambient_gateway = GatewayMetadataRequirer(self, relation_name="gateway-metadata")
+        self.ambient_gateway = GatewayMetadataRequirer(
+            self, relation_name=AMBIENT_GATEWAY_RELATION
+        )
 
         self._mesh = ServiceMeshConsumer(
             self,
@@ -91,8 +93,8 @@ class TensorboardController(CharmBase):
         self.framework.observe(self.on.config_changed, self._on_event)
         self.framework.observe(self.on.leader_elected, self._on_event)
         self.framework.observe(self.on.tensorboard_controller_pebble_ready, self._on_event)
-        self.framework.observe(self.on["gateway-info"].relation_changed, self._on_event)
-        self.framework.observe(self.on["gateway-metadata"].relation_changed, self._on_event)
+        self.framework.observe(self.on[SIDECAR_GATEWAY_RELATION].relation_changed, self._on_event)
+        self.framework.observe(self.on[AMBIENT_GATEWAY_RELATION].relation_changed, self._on_event)
         self.framework.observe(self.on["service-mesh"].relation_changed, self._on_event)
 
         # setup events to be handled by specific event handlers
