@@ -21,12 +21,17 @@ class TestCharm:
     """Test class for Tensorboard Controller."""
 
     def _setup_gateway_info_relation(
-        self, harness: Harness, model: str = "test-model", name: str = "test-gateway"
+        self,
+        harness: Harness,
+        model: str = "test-model",
+        name: str = "test-gateway",
+        populate_data: bool = True,
     ):
         """Setup the gateway info relation."""
-        dummy_relation = {"gateway_namespace": model, "gateway_name": name}
         rel_id = harness.add_relation("gateway-info", "app")
-        harness.update_relation_data(rel_id, "app", dummy_relation)
+        if populate_data:
+            dummy_relation = {"gateway_namespace": model, "gateway_name": name}
+            harness.update_relation_data(rel_id, "app", dummy_relation)
         harness.add_relation_unit(rel_id, "app/0")
 
     def _setup_gateway_metadata_relation(
@@ -92,8 +97,7 @@ class TestCharm:
 
         harness.set_leader(True)
         # Add relation but don't populate data
-        rel_id = harness.add_relation("gateway-info", "app")
-        harness.add_relation_unit(rel_id, "app/0")
+        self._setup_gateway_info_relation(harness, populate_data=False)
 
         harness.begin()
         harness.set_can_connect("tensorboard-controller", True)
