@@ -46,7 +46,7 @@ package-mode = false
 optional = true
 
 [tool.poetry.group.charm.dependencies]
-charmed-kubeflow-chisme = ">=0.4.14"
+charmed-kubeflow-chisme = ">=0.4.21"
 charmed-service-mesh-helpers = ">=0.2.0"
 cosl = "^0.0.45"
 lightkube = "^0.15.6"
@@ -88,7 +88,7 @@ optional = true
 
 [tool.poetry.group.integration.dependencies]
 juju = "<4.0"
-charmed-kubeflow-chisme = { git = "https://github.com/canonical/charmed-kubeflow-chisme.git", branch="feat-add-gateway-relation-to-ambient-utils" }
+charmed-kubeflow-chisme = ">=0.4.21"
 lightkube = "^0.15.6"
 pytest = "^8.3.4"
 pytest-operator = "^0.38.0"

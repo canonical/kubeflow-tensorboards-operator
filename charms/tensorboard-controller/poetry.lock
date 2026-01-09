@@ -520,13 +520,15 @@ pycparser = {version = "*", markers = "implementation_name != \"PyPy\""}
 
 [[package]]
 name = "charmed-kubeflow-chisme"
-version = "0.4.20"
+version = "0.4.21"
 description = "A collection of helpers for Charms maintained by the Charmed Kubeflow team"
 optional = false
 python-versions = ">=3.6"
 groups = ["charm", "integration"]
-files = []
-develop = false
+files = [
+    {file = "charmed_kubeflow_chisme-0.4.21-py3-none-any.whl", hash = "sha256:a87b62d73b445a43bcfc20701762174232a5f06a282a563039a1f24f20a2ffc5"},
+    {file = "charmed_kubeflow_chisme-0.4.21.tar.gz", hash = "sha256:951a59e74d97335e868fa9fc476971ce9aba88bd7393650bc20fa2f7a57f5737"},
+]
 
 [package.dependencies]
 aiohttp = ">=3.8,<4.0"
@@ -543,12 +545,6 @@ tenacity = "*"
 
 [package.extras]
 test = ["black", "pytest"]
-
-[package.source]
-type = "git"
-url = "https://github.com/canonical/charmed-kubeflow-chisme.git"
-reference = "feat-add-gateway-relation-to-ambient-utils"
-resolved_reference = "1ed625b9c78142c86199b94552783c1e40541e52"
 
 [[package]]
 name = "charmed-service-mesh-helpers"
@@ -3404,4 +3400,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "ca3ff4460ce239fc4519e78c647914fb60be95b0d8c5e001432726b0886777c8"
+content-hash = "1e9fd8a98c0f288c375724b24fd5138d1ecf5d0ecb27f0f40028405c2b145525"
