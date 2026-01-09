@@ -13,11 +13,11 @@ from charmed_kubeflow_chisme.testing import (
     assert_metrics_endpoint,
     assert_security_context,
     deploy_and_assert_grafana_agent,
+    deploy_and_integrate_service_mesh_charms,
     generate_container_securitycontext_map,
     get_alert_rules,
     get_pod_names,
 )
-from charms_dependencies import ISTIO_GATEWAY, ISTIO_PILOT
 from lightkube import ApiError, Client, codecs
 from lightkube.generic_resource import (
     create_namespaced_resource,
@@ -26,7 +26,7 @@ from lightkube.generic_resource import (
 from lightkube.resources.apiextensions_v1 import CustomResourceDefinition
 from lightkube.resources.core_v1 import PersistentVolumeClaim
 from pytest_operator.plugin import OpsTest
-from utils import assert_replicas, remove_application, setup_istio
+from utils import assert_replicas, remove_application
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +38,9 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADATA)
 
+SERVICE_MESH_ENDPOINT = "service-mesh"
+GATEWAY_METADATA_ENDPOINT = "gateway-metadata"
+
 PVC_NAME = "dummy-pvc"
 TENSORBOARD_NAME = "dummy-tensorboard"
 TENSORBOARD_RESOURCE = create_namespaced_resource(
@@ -46,8 +49,6 @@ TENSORBOARD_RESOURCE = create_namespaced_resource(
     kind="tensorboard",
     plural="tensorboards",
 )
-
-ISTIO_GATEWAY_APP_NAME = "istio-ingressgateway"
 
 
 @pytest.fixture(scope="session")
@@ -113,11 +114,13 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
 @pytest.mark.abort_on_fail
 async def test_istio_gateway_info_relation(ops_test: OpsTest):
     """Setup Istio and relate it to the Tensorboard Controller."""
-    # setup Istio
-    await setup_istio(ops_test, ISTIO_GATEWAY, ISTIO_PILOT)
-
-    # add Tensorboard-Controller/Istio relation
-    await ops_test.model.integrate(f"{ISTIO_PILOT.charm}:gateway-info", f"{APP_NAME}:gateway-info")
+    await deploy_and_integrate_service_mesh_charms(
+        app=APP_NAME,
+        model=ops_test.model,
+        relate_to_ingress_route_endpoint=False,
+        relate_to_ingress_gateway_endpoint=True,
+        relate_to_beacon=True,
+    )
 
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=60 * 5)
 

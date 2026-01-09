@@ -11,6 +11,8 @@ from charmed_kubeflow_chisme.kubernetes import (
     create_charm_default_labels,
 )
 from charmed_kubeflow_chisme.pebble import update_layer
+from charmed_service_mesh_helpers.interfaces import GatewayMetadataRequirer
+from charms.istio_beacon_k8s.v0.service_mesh import ServiceMeshConsumer, UnitPolicy
 from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError, GatewayRequirer
 from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v1.kubernetes_service_patch import KubernetesServicePatch
@@ -22,7 +24,7 @@ from lightkube.resources.apiextensions_v1 import CustomResourceDefinition
 from lightkube.resources.rbac_authorization_v1 import ClusterRole, ClusterRoleBinding
 from ops import main
 from ops.charm import CharmBase
-from ops.model import ActiveStatus, Container, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, Container, MaintenanceStatus, WaitingStatus
 from ops.pebble import Layer
 
 PROBE_PORT = "8081"
@@ -40,6 +42,9 @@ CRD_RESOURCES = {
     "resource_types": {CustomResourceDefinition},
     "scope": "tensorboard",
 }
+
+SIDECAR_GATEWAY_RELATION = "gateway-info"
+AMBIENT_GATEWAY_RELATION = "gateway-metadata"
 
 
 class TensorboardController(CharmBase):
@@ -67,13 +72,30 @@ class TensorboardController(CharmBase):
         self._rbac_resource_handler = None
         self._crd_resource_handler = None
 
-        self.gateway = GatewayRequirer(self)
+        # sidecar
+        self.sidecar_gateway = GatewayRequirer(self)
+
+        # ambient
+        self.ambient_gateway = GatewayMetadataRequirer(
+            self, relation_name=AMBIENT_GATEWAY_RELATION
+        )
+
+        self._mesh = ServiceMeshConsumer(
+            self,
+            policies=[
+                UnitPolicy(
+                    relation="metrics-endpoint",
+                ),
+            ],
+        )
 
         # setup events to be handled by main event handler
         self.framework.observe(self.on.config_changed, self._on_event)
         self.framework.observe(self.on.leader_elected, self._on_event)
         self.framework.observe(self.on.tensorboard_controller_pebble_ready, self._on_event)
-        self.framework.observe(self.on["gateway-info"].relation_changed, self._on_event)
+        self.framework.observe(self.on[SIDECAR_GATEWAY_RELATION].relation_changed, self._on_event)
+        self.framework.observe(self.on[AMBIENT_GATEWAY_RELATION].relation_changed, self._on_event)
+        self.framework.observe(self.on["service-mesh"].relation_changed, self._on_event)
 
         # setup events to be handled by specific event handlers
         self.framework.observe(self.on.install, self._on_install)
@@ -125,7 +147,7 @@ class TensorboardController(CharmBase):
     @property
     def service_environment(self) -> Dict[str, str]:
         """Return environment variables based on relation data."""
-        gateway_ns, gateway_name = self._get_gateway_data()
+        gateway_ns, gateway_name = self._get_gateway_info()
         ret_env_vars = {
             "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
             "ISTIO_HOST": "*",
@@ -179,14 +201,51 @@ class TensorboardController(CharmBase):
             logger=self.logger,
         )
 
-    def _get_gateway_data(self) -> Tuple[str, str]:
-        """Retrieve gateway namespace and name from relation data."""
-        try:
-            gateway_data = self.gateway.get_relation_data()
-        except GatewayRelationError:
-            raise ErrorWithStatus("Waiting for gateway info relation", WaitingStatus)
+    def _get_gateway_info(self) -> Tuple[str, str]:
+        """Retrieve gateway namespace and name from relation data.
 
-        return gateway_data["gateway_namespace"], gateway_data["gateway_name"]
+        This method checks for gateway relations and retrieves the gateway namespace
+        and name. If both sidecar and ambient gateway relations are present, the charm
+        is blocked as only one should be used at a time.
+
+        Returns:
+            Tuple[str, str]: A tuple containing (gateway_namespace, gateway_name)
+
+        Raises:
+            ErrorWithStatus: If both relations are present (BlockedStatus), if waiting
+                           for relation data (WaitingStatus), or if no relation is present
+                           (BlockedStatus).
+        """
+        sidecar_relation = self.model.get_relation(SIDECAR_GATEWAY_RELATION)
+        ambient_relation = self.model.get_relation(AMBIENT_GATEWAY_RELATION)
+
+        # Block if both relations are present
+        if sidecar_relation and ambient_relation:
+            raise ErrorWithStatus(
+                "Cannot relate to both sidecar and ambient gateway simultaneously", BlockedStatus
+            )
+
+        # Try to get data from sidecar gateway relation
+        if sidecar_relation:
+            try:
+                gateway_data = self.sidecar_gateway.get_relation_data()
+                gateway_namespace = gateway_data["gateway_namespace"]
+                gateway_name = gateway_data["gateway_name"]
+                return gateway_namespace, gateway_name
+            except GatewayRelationError:
+                raise ErrorWithStatus("Waiting for gateway info relation data", WaitingStatus)
+
+        # Try to get data from ambient gateway relation
+        if ambient_relation:
+            ambient_data = self.ambient_gateway.get_metadata()
+            if ambient_data is None:
+                raise ErrorWithStatus("Waiting for gateway metadata relation data", WaitingStatus)
+            gateway_namespace = ambient_data.namespace
+            gateway_name = ambient_data.gateway_name
+            return gateway_namespace, gateway_name
+
+        # No relation present
+        raise ErrorWithStatus("Missing required gateway relation", BlockedStatus)
 
     def _apply_k8s_resources(self, force_conflicts: bool = False) -> None:
         """Apply K8s resources.

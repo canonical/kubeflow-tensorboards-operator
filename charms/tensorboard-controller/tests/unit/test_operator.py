@@ -4,7 +4,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from ops.model import ActiveStatus, MaintenanceStatus, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 
 from charm import TensorboardController
@@ -21,13 +21,30 @@ class TestCharm:
     """Test class for Tensorboard Controller."""
 
     def _setup_gateway_info_relation(
-        self, harness: Harness, model: str = "test-model", name: str = "test-gateway"
+        self,
+        harness: Harness,
+        model: str = "test-model",
+        name: str = "test-gateway",
+        populate_data: bool = True,
     ):
         """Setup the gateway info relation."""
-        dummy_relation = {"gateway_namespace": model, "gateway_name": name}
         rel_id = harness.add_relation("gateway-info", "app")
-        harness.update_relation_data(rel_id, "app", dummy_relation)
+        if populate_data:
+            dummy_relation = {"gateway_namespace": model, "gateway_name": name}
+            harness.update_relation_data(rel_id, "app", dummy_relation)
         harness.add_relation_unit(rel_id, "app/0")
+
+    def _setup_gateway_metadata_relation(
+        self, harness: Harness, model: str = "test-model", name: str = "test-gateway"
+    ):
+        """Setup the gateway metadata relation.
+
+        Note: This should be called before harness.begin() or harness.begin_with_initial_hooks().
+        The mocking of get_metadata will be applied after harness starts.
+        """
+        rel_id = harness.add_relation("gateway-metadata", "app")
+        harness.add_relation_unit(rel_id, "app/0")
+        return model, name
 
     @patch("charm.TensorboardController.rbac_resource_handler", MagicMock())
     @patch("charm.TensorboardController.crd_resource_handler", MagicMock())
@@ -52,36 +69,132 @@ class TestCharm:
     def test_not_leader(
         self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
     ):
-        """Test that charm waits if it's not the leader."""
+        """Test that charm goes to waiting if it's not the leader."""
         harness.begin_with_initial_hooks()
 
         assert harness.charm.model.unit.status == WaitingStatus("Waiting for leadership")
 
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
-    def test_no_gateway_info_relation(
+    def test_no_gateway_relation(
         self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
     ):
-        """Test that charm waits if the gateway info relation is missing."""
+        """Test that charm is blocked if no gateway relation exists."""
         harness.set_leader(True)
         harness.begin_with_initial_hooks()
 
-        assert harness.charm.model.unit.status == WaitingStatus(
-            "Waiting for gateway info relation"
+        assert harness.charm.model.unit.status == BlockedStatus(
+            "Missing required gateway relation"
         )
 
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
-    def test_active(
+    def test_waiting_for_gateway_info_data(
         self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
     ):
-        """Test that charm goes to active status if the gateway info relation exists."""
+        """Test that charm goes to waiting when gateway-info relation exists but data not ready."""
+        from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError
+
+        harness.set_leader(True)
+        # Add relation but don't populate data
+        self._setup_gateway_info_relation(harness, populate_data=False)
+
+        harness.begin()
+        harness.set_can_connect("tensorboard-controller", True)
+
+        # Mock get_relation_data to raise GatewayRelationError
+        with patch.object(
+            harness.charm.sidecar_gateway,
+            "get_relation_data",
+            side_effect=GatewayRelationError("Data not ready"),
+        ):
+            harness.charm.on.config_changed.emit()
+
+        assert harness.charm.model.unit.status == WaitingStatus(
+            "Waiting for gateway info relation data"
+        )
+
+    @patch("charm.TensorboardController.rbac_resource_handler")
+    @patch("charm.TensorboardController.crd_resource_handler")
+    def test_active_with_gateway_info(
+        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+    ):
+        """Test that charm goes to active status with gateway-info relation."""
         harness.set_leader(True)
         self._setup_gateway_info_relation(harness)
 
         harness.begin_with_initial_hooks()
 
         assert isinstance(harness.charm.model.unit.status, ActiveStatus)
+
+    @patch("charm.TensorboardController.rbac_resource_handler")
+    @patch("charm.TensorboardController.crd_resource_handler")
+    def test_waiting_for_gateway_metadata_data(
+        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+    ):
+        """Test charm goes to waiting when gateway-metadata relation exists but data not ready."""
+        harness.set_leader(True)
+        model, name = self._setup_gateway_metadata_relation(harness)
+
+        harness.begin()
+        harness.set_can_connect("tensorboard-controller", True)
+
+        # Mock the ambient_gateway.get_metadata() to return None (data not ready)
+        harness.charm.ambient_gateway.get_metadata = MagicMock(return_value=None)
+
+        # Trigger a config-changed to re-evaluate
+        harness.charm.on.config_changed.emit()
+
+        assert harness.charm.model.unit.status == WaitingStatus(
+            "Waiting for gateway metadata relation data"
+        )
+
+    @patch("charm.TensorboardController.rbac_resource_handler")
+    @patch("charm.TensorboardController.crd_resource_handler")
+    def test_active_with_gateway_metadata(
+        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+    ):
+        """Test that charm goes to active status with gateway-metadata relation."""
+        harness.set_leader(True)
+        model, name = self._setup_gateway_metadata_relation(harness)
+
+        harness.begin_with_initial_hooks()
+
+        # Mock the ambient_gateway.get_metadata() to return expected data
+        metadata = MagicMock()
+        metadata.namespace = model
+        metadata.gateway_name = name
+        harness.charm.ambient_gateway.get_metadata = MagicMock(return_value=metadata)
+
+        # Trigger a config-changed to re-evaluate
+        harness.charm.on.config_changed.emit()
+
+        assert isinstance(harness.charm.model.unit.status, ActiveStatus)
+
+    @patch("charm.TensorboardController.rbac_resource_handler")
+    @patch("charm.TensorboardController.crd_resource_handler")
+    def test_blocked_with_both_gateway_relations(
+        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+    ):
+        """Test that charm is blocked when both gateway relations are present."""
+        harness.set_leader(True)
+        self._setup_gateway_info_relation(harness)
+        model, name = self._setup_gateway_metadata_relation(harness)
+
+        harness.begin_with_initial_hooks()
+
+        # Mock the ambient_gateway.get_metadata() to return expected data
+        metadata = MagicMock()
+        metadata.namespace = model
+        metadata.gateway_name = name
+        harness.charm.ambient_gateway.get_metadata = MagicMock(return_value=metadata)
+
+        # Trigger a config-changed to re-evaluate
+        harness.charm.on.config_changed.emit()
+
+        assert harness.charm.model.unit.status == BlockedStatus(
+            "Cannot relate to both sidecar and ambient gateway simultaneously"
+        )
 
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
