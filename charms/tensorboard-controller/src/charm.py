@@ -148,9 +148,15 @@ class TensorboardController(CharmBase):
     def service_environment(self) -> Dict[str, str]:
         """Return environment variables based on relation data."""
         gateway_ns, gateway_name = self._get_gateway_info()
+
+        use_ambient = "false"
+        if self.model.get_relation("service-mesh"):
+            use_ambient = "true"
+
         ret_env_vars = {
             "ISTIO_GATEWAY": f"{gateway_ns}/{gateway_name}",
             "ISTIO_HOST": "*",
+            "USE_GATEWAY_API": use_ambient,
             "RWO_PVC_SCHEDULING": "True",
             "TENSORBOARD_IMAGE": self.model.config["tensorboard-image"],
         }
@@ -222,7 +228,8 @@ class TensorboardController(CharmBase):
         # Block if both relations are present
         if sidecar_relation and ambient_relation:
             raise ErrorWithStatus(
-                "Cannot relate to both sidecar and ambient gateway simultaneously", BlockedStatus
+                "Cannot relate to both sidecar and ambient gateway simultaneously",
+                BlockedStatus,
             )
 
         # Try to get data from sidecar gateway relation
