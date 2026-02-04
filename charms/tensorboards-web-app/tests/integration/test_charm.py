@@ -7,17 +7,31 @@ from pathlib import Path
 import aiohttp
 import pytest
 import yaml
-from charmed_kubeflow_chisme.testing import assert_logging, deploy_and_assert_grafana_agent
+from charmed_kubeflow_chisme.testing import (
+    CharmSpec,
+    assert_logging,
+    assert_security_context,
+    deploy_and_assert_grafana_agent,
+    generate_container_securitycontext_map,
+    get_pod_names,
+)
+from charms_dependencies import ISTIO_GATEWAY, ISTIO_PILOT
+from lightkube import Client
 from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = "tensorboards-web-app"
+CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADATA)
 PORT = 5000
 
-ISTIO_GATEWAY = "istio-ingressgateway"
-ISTIO_PILOT = "istio-pilot"
+
+@pytest.fixture(scope="session")
+def lightkube_client() -> Client:
+    """Returns lightkube Kubernetes client"""
+    client = Client(field_manager=f"{APP_NAME}")
+    return client
 
 
 @pytest.mark.abort_on_fail
@@ -62,7 +76,7 @@ async def test_ingress_relation(ops_test: OpsTest):
     """Setup Istio and relate it to the Tensoboards Web App(TWA)."""
     await setup_istio(ops_test, ISTIO_GATEWAY, ISTIO_PILOT)
 
-    await ops_test.model.add_relation(f"{ISTIO_PILOT}:ingress", f"{APP_NAME}:ingress")
+    await ops_test.model.add_relation(f"{ISTIO_PILOT.charm}:ingress", f"{APP_NAME}:ingress")
 
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="active", timeout=60 * 5)
 
@@ -86,25 +100,45 @@ async def test_ui_is_accessible(ops_test: OpsTest):
     assert "Tensorboards Manager UI" in result_text
 
 
-async def setup_istio(ops_test: OpsTest, istio_gateway: str, istio_pilot: str):
+@pytest.mark.parametrize("container_name", list(CONTAINERS_SECURITY_CONTEXT_MAP.keys()))
+async def test_container_security_context(
+    ops_test: OpsTest,
+    lightkube_client: Client,
+    container_name: str,
+):
+    """Test container security context is correctly set.
+
+    Verify that container spec defines the security context with correct
+    user ID and group ID.
+    """
+    pod_name = get_pod_names(ops_test.model.name, APP_NAME)[0]
+    assert_security_context(
+        lightkube_client,
+        pod_name,
+        container_name,
+        CONTAINERS_SECURITY_CONTEXT_MAP,
+        ops_test.model.name,
+    )
+
+
+async def setup_istio(ops_test: OpsTest, istio_gateway: CharmSpec, istio_pilot: CharmSpec):
     """Deploy Istio Ingress Gateway and Istio Pilot."""
     await ops_test.model.deploy(
-        entity_url="istio-gateway",
-        application_name=istio_gateway,
-        channel="1.24/stable",
-        config={"kind": "ingress"},
-        trust=True,
+        entity_url=istio_gateway.charm,
+        channel=istio_gateway.channel,
+        config=istio_gateway.config,
+        trust=istio_gateway.trust,
     )
     await ops_test.model.deploy(
-        istio_pilot,
-        channel="1.24/stable",
-        config={"default-gateway": "test-gateway"},
-        trust=True,
+        istio_pilot.charm,
+        channel=istio_pilot.channel,
+        config=istio_pilot.config,
+        trust=istio_pilot.trust,
     )
-    await ops_test.model.add_relation(istio_pilot, istio_gateway)
+    await ops_test.model.add_relation(istio_pilot.charm, istio_gateway.charm)
 
     await ops_test.model.wait_for_idle(
-        apps=[istio_pilot, istio_gateway],
+        apps=[istio_pilot.charm, istio_gateway.charm],
         status="active",
         timeout=60 * 5,
     )

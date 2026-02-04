@@ -11,9 +11,13 @@ from charmed_kubeflow_chisme.testing import (
     assert_alert_rules,
     assert_logging,
     assert_metrics_endpoint,
+    assert_security_context,
     deploy_and_assert_grafana_agent,
+    generate_container_securitycontext_map,
     get_alert_rules,
+    get_pod_names,
 )
+from charms_dependencies import ISTIO_GATEWAY, ISTIO_PILOT
 from lightkube import ApiError, Client, codecs
 from lightkube.generic_resource import (
     create_namespaced_resource,
@@ -32,6 +36,7 @@ TENSORBOARD_TEMPLATE_FILE = ASSETS_DIR / "dummy-tensorboard.yaml.j2"
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
+CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADATA)
 
 PVC_NAME = "dummy-pvc"
 TENSORBOARD_NAME = "dummy-tensorboard"
@@ -42,14 +47,19 @@ TENSORBOARD_RESOURCE = create_namespaced_resource(
     plural="tensorboards",
 )
 
-ISTIO_GATEWAY = "istio-ingressgateway"
-ISTIO_PILOT = "istio-pilot"
+ISTIO_GATEWAY_APP_NAME = "istio-ingressgateway"
+
+
+@pytest.fixture(scope="session")
+def lightkube_client() -> Client:
+    """Returns lightkube Kubernetes client"""
+    client = Client(field_manager=f"{APP_NAME}")
+    return client
 
 
 @pytest.fixture(scope="module")
-def create_tensorboard(ops_test: OpsTest):
+def create_tensorboard(ops_test: OpsTest, lightkube_client: Client):
     """Create Tensorboard with attached PVC and handle cleanup at the end of the module tests."""
-    lightkube_client = Client()
     load_in_cluster_generic_resources(lightkube_client)
 
     # Create PVC for Tensorboard logs and Tensorboard
@@ -109,21 +119,19 @@ async def test_istio_gateway_info_relation(ops_test: OpsTest):
     await setup_istio(ops_test, ISTIO_GATEWAY, ISTIO_PILOT)
 
     # add Tensorboard-Controller/Istio relation
-    await ops_test.model.integrate(f"{ISTIO_PILOT}:gateway-info", f"{APP_NAME}:gateway-info")
+    await ops_test.model.integrate(f"{ISTIO_PILOT.charm}:gateway-info", f"{APP_NAME}:gateway-info")
 
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=60 * 5
     )
 
 
-async def test_create_tensorboard(ops_test: OpsTest, create_tensorboard):
+async def test_create_tensorboard(ops_test: OpsTest, create_tensorboard, lightkube_client: Client):
     """Test Tensorboard creation.
 
     This test relies on the create_tensorboard fixture, which handles the Tensorboard creation and
     is responsible for cleaning up at the end.
     """
-    lightkube_client = Client()
-
     try:
         tensorboard_created = lightkube_client.get(
             TENSORBOARD_RESOURCE,
@@ -164,14 +172,33 @@ async def test_alert_rules(ops_test):
     await assert_alert_rules(app, alert_rules)
 
 
+@pytest.mark.parametrize("container_name", list(CONTAINERS_SECURITY_CONTEXT_MAP.keys()))
+async def test_container_security_context(
+    ops_test: OpsTest,
+    lightkube_client: Client,
+    container_name: str,
+):
+    """Test container security context is correctly set.
+
+    Verify that container spec defines the security context with correct
+    user ID and group ID.
+    """
+    pod_name = get_pod_names(ops_test.model.name, APP_NAME)[0]
+    assert_security_context(
+        lightkube_client,
+        pod_name,
+        container_name,
+        CONTAINERS_SECURITY_CONTEXT_MAP,
+        ops_test.model.name,
+    )
+
+
 @pytest.mark.abort_on_fail
-async def test_remove_with_resources_present(ops_test: OpsTest):
+async def test_remove_with_resources_present(ops_test: OpsTest, lightkube_client: Client):
     """Test remove with all resources deployed.
 
     Verify that all deployed resources that need to be removed are removed.
     """
-    lightkube_client = Client()
-
     # remove deployed charm and verify that it is deleted
     await remove_application(ops_test, APP_NAME)
 

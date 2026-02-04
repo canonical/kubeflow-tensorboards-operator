@@ -4,6 +4,7 @@
 import logging
 
 import tenacity
+from charmed_kubeflow_chisme.testing import CharmSpec
 from lightkube import Client
 from lightkube.core.resource import Resource
 from pytest_operator.plugin import OpsTest
@@ -11,25 +12,24 @@ from pytest_operator.plugin import OpsTest
 logger = logging.getLogger(__name__)
 
 
-async def setup_istio(ops_test: OpsTest, istio_gateway: str, istio_pilot: str):
+async def setup_istio(ops_test: OpsTest, istio_gateway: CharmSpec, istio_pilot: CharmSpec):
     """Deploy Istio Ingress Gateway and Istio Pilot."""
     await ops_test.model.deploy(
-        entity_url="istio-gateway",
-        application_name=istio_gateway,
-        channel="1.24/stable",
-        config={"kind": "ingress"},
-        trust=True,
+        entity_url=istio_gateway.charm,
+        channel=istio_gateway.channel,
+        config=istio_gateway.config,
+        trust=istio_gateway.trust,
     )
     await ops_test.model.deploy(
-        istio_pilot,
-        channel="1.24/stable",
-        config={"default-gateway": "test-gateway"},
-        trust=True,
+        istio_pilot.charm,
+        channel=istio_pilot.channel,
+        config=istio_pilot.config,
+        trust=istio_pilot.trust,
     )
-    await ops_test.model.add_relation(istio_pilot, istio_gateway)
+    await ops_test.model.add_relation(istio_pilot.charm, istio_gateway.charm)
 
     await ops_test.model.wait_for_idle(
-        apps=[istio_pilot, istio_gateway],
+        apps=[istio_pilot.charm, istio_gateway.charm],
         status="active",
         raise_on_blocked=False,
         timeout=60 * 20,
