@@ -11,6 +11,7 @@ from charmed_kubeflow_chisme.testing import (
     assert_alert_rules,
     assert_logging,
     assert_metrics_endpoint,
+    assert_path_reachable_through_ingress,
     assert_security_context,
     deploy_and_assert_grafana_agent,
     deploy_and_integrate_service_mesh_charms,
@@ -96,7 +97,10 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
     resources = {"tensorboard-controller-image": tb_controller_image}
 
     await ops_test.model.deploy(
-        entity_url=entity_url, resources=resources, application_name=APP_NAME, trust=True
+        entity_url=entity_url,
+        resources=resources,
+        application_name=APP_NAME,
+        trust=True,
     )
 
     await ops_test.model.wait_for_idle(apps=[APP_NAME], status="blocked", timeout=60 * 5)
@@ -143,6 +147,12 @@ async def test_create_tensorboard(ops_test: OpsTest, create_tensorboard, lightku
         else:
             raise
     assert tensorboard_created, f"Tensorboard {ops_test.model_name}/{TENSORBOARD_NAME} not found!"
+
+    await assert_path_reachable_through_ingress(
+        http_path=f"/tensorboard/{ops_test.model_name}/{TENSORBOARD_NAME}/",
+        namespace=ops_test.model_name,
+        expected_status=200,
+    )
 
     assert_replicas(lightkube_client, TENSORBOARD_RESOURCE, TENSORBOARD_NAME, ops_test.model_name)
 
