@@ -5,4 +5,4 @@ metadata:
     app: {{ tensorboard_name }}
   name: {{ tensorboard_name }}
 spec:
-  logspath: "pvc://{{ pvc_name }}/tensorboard_logs/"
+  logspath: pvc://{{ pvc_name }}/tensorboard_logs/
