@@ -12,6 +12,9 @@ show_missing = true
 minversion = "6.0"
 log_cli_level = "INFO"
 
+[tool.pyright]
+extraPaths = ["lib"]
+
 # Formatting tools configuration
 [tool.black]
 line-length = 99
@@ -80,7 +83,6 @@ optional = true
 coverage = "^7.6.1"
 ops = "^2.17.1"
 pytest = "^8.3.4"
-pytest-lazy-fixture = "^0.6.3"
 pytest-mock = "^3.14.0"
 
 [tool.poetry.group.integration]

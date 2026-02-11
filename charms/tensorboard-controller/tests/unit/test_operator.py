@@ -67,7 +67,10 @@ class TestCharm:
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
     def test_not_leader(
-        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+        self,
+        rbac_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
     ):
         """Test that charm goes to waiting if it's not the leader."""
         harness.begin_with_initial_hooks()
@@ -77,7 +80,10 @@ class TestCharm:
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
     def test_no_gateway_relation(
-        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+        self,
+        rbac_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
     ):
         """Test that charm is blocked if no gateway relation exists."""
         harness.set_leader(True)
@@ -90,7 +96,10 @@ class TestCharm:
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
     def test_waiting_for_gateway_info_data(
-        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+        self,
+        rbac_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
     ):
         """Test that charm goes to waiting when gateway-info relation exists but data not ready."""
         from charms.istio_pilot.v0.istio_gateway_info import GatewayRelationError
@@ -117,7 +126,10 @@ class TestCharm:
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
     def test_active_with_gateway_info(
-        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+        self,
+        rbac_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
     ):
         """Test that charm goes to active status with gateway-info relation."""
         harness.set_leader(True)
@@ -130,7 +142,10 @@ class TestCharm:
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
     def test_waiting_for_gateway_metadata_data(
-        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+        self,
+        rbac_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
     ):
         """Test charm goes to waiting when gateway-metadata relation exists but data not ready."""
         harness.set_leader(True)
@@ -152,7 +167,10 @@ class TestCharm:
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
     def test_active_with_gateway_metadata(
-        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+        self,
+        rbac_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
     ):
         """Test that charm goes to active status with gateway-metadata relation."""
         harness.set_leader(True)
@@ -174,7 +192,10 @@ class TestCharm:
     @patch("charm.TensorboardController.rbac_resource_handler")
     @patch("charm.TensorboardController.crd_resource_handler")
     def test_blocked_with_both_gateway_relations(
-        self, rbac_resource_handler: MagicMock, crd_resource_handler: MagicMock, harness: Harness
+        self,
+        rbac_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
     ):
         """Test that charm is blocked when both gateway relations are present."""
         harness.set_leader(True)
@@ -234,3 +255,61 @@ class TestCharm:
         rbac_resource_handler.apply.assert_called()
         crd_resource_handler.apply.assert_called()
         assert isinstance(harness.charm.model.unit.status, MaintenanceStatus)
+
+    @pytest.mark.parametrize(
+        "ambient_enabled,expected_use_gateway_api",
+        [
+            (False, "false"),
+            (True, "true"),
+        ],
+    )
+    @patch("charm.TensorboardController.rbac_resource_handler")
+    @patch("charm.TensorboardController.crd_resource_handler")
+    def test_use_gateway_api_environment_variable_parameterized(
+        self,
+        rbac_resource_handler: MagicMock,
+        crd_resource_handler: MagicMock,
+        harness: Harness,
+        ambient_enabled: bool,
+        expected_use_gateway_api: str,
+    ):
+        """Test pebble env is set correctly based on service-mesh relation.
+
+        This parameterized test checks both scenarios:
+        - When service-mesh relation is NOT present then USE_GATEWAY_API should be "false"
+        - When service-mesh relation IS present then USE_GATEWAY_API should be "true"
+        """
+        harness.set_leader(True)
+        model, name = self._setup_gateway_metadata_relation(harness)
+
+        harness.begin_with_initial_hooks()
+
+        # Mock the ambient_gateway.get_metadata() to return expected data
+        metadata = MagicMock()
+        metadata.namespace = model
+        metadata.gateway_name = name
+        harness.charm.ambient_gateway.get_metadata = MagicMock(return_value=metadata)
+
+        # Trigger a config-changed to re-evaluate
+        harness.charm.on.config_changed.emit()
+
+        assert isinstance(harness.charm.model.unit.status, ActiveStatus)
+
+        # Setup service-mesh relation if ambient is enabled
+        if ambient_enabled:
+            rel_id = harness.add_relation("service-mesh", "istio-beacon-k8s")
+            harness.add_relation_unit(rel_id, "istio-beacon-k8s/0")
+
+        # Trigger a config-changed to re-evaluate
+        harness.charm.on.config_changed.emit()
+
+        # Get the pebble plan to check environment variables
+        pebble_plan = harness.get_container_pebble_plan("tensorboard-controller")
+        assert pebble_plan
+        assert pebble_plan.services
+        pebble_plan_info = pebble_plan.to_dict()
+        test_env = pebble_plan_info["services"]["tensorboard-controller"]["environment"]
+
+        # Check USE_GATEWAY_API environment variable
+        assert "USE_GATEWAY_API" in test_env
+        assert test_env["USE_GATEWAY_API"] == expected_use_gateway_api
