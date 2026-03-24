@@ -145,8 +145,12 @@ jobs:
           - integration-ambient
 
     steps:
+      - name: Maximise GH runner space
+        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+
       - name: Check out code
         uses: actions/checkout@v4
+
       - name: Install dependencies
         run: pipx install tox
 
@@ -156,7 +160,6 @@ jobs:
           sudo rm -rf /run/containerd
           sudo snap install concierge --classic
           sudo concierge prepare --trace
-
 
       - name: Download packed charm(s)
         id: download-charms
