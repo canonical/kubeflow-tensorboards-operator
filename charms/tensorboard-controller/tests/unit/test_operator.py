@@ -276,8 +276,8 @@ class TestCharm:
         """Test pebble env is set correctly based on service-mesh relation.
 
         This parameterized test checks both scenarios:
-        - When service-mesh relation is NOT present then USE_GATEWAY_API should be "false"
-        - When service-mesh relation IS present then USE_GATEWAY_API should be "true"
+        - When service-mesh relation is NOT present then EXPERIMENTAL_USE_GATEWAY_API should be "false" # noqa: E501
+        - When service-mesh relation IS present then EXPERIMENTAL_USE_GATEWAY_API should be "true"
         """
         harness.set_leader(True)
         model, name = self._setup_gateway_metadata_relation(harness)
@@ -311,5 +311,5 @@ class TestCharm:
         test_env = pebble_plan_info["services"]["tensorboard-controller"]["environment"]
 
         # Check USE_GATEWAY_API environment variable
-        assert "USE_GATEWAY_API" in test_env
-        assert test_env["USE_GATEWAY_API"] == expected_use_gateway_api
+        assert "EXPERIMENTAL_USE_GATEWAY_API" in test_env
+        assert test_env["EXPERIMENTAL_USE_GATEWAY_API"] == expected_use_gateway_api
