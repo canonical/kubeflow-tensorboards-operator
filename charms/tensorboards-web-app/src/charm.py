@@ -189,7 +189,10 @@ class TensorboardsWebApp(CharmBase):
 
     def _ambient_ingress_setup(self):
         """Submit the Ingress configuration for Ambient Mesh, if unit is leader."""
-        http_listener = Listener(port=80, protocol=ProtocolType.HTTP)
+        if self.ingress.tls_enabled:
+            http_listener = Listener(port=443, protocol=ProtocolType.HTTP)
+        else:
+            http_listener = Listener(port=80, protocol=ProtocolType.HTTP)
 
         config = IstioIngressRouteConfig(
             model=self.model.name,

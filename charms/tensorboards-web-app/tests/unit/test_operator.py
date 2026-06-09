@@ -1,12 +1,13 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 import yaml
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 
+from charms.istio_ingress_k8s.v0.istio_ingress_route import ProtocolType
 from charm import TensorboardsWebApp
 
 APP_NAME = "tensorboards-web-app"
@@ -125,6 +126,27 @@ class TestCharm:
             harness.charm.model.unit.status,
             BlockedStatus,
         )
+
+    @pytest.mark.parametrize("tls_enabled, expected_port", [(False, 80), (True, 443)])
+    @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
+    @patch("charm.TensorboardsWebApp.k8s_resource_handler", MagicMock)
+    @patch("charm.ServiceMeshConsumer", MagicMock)
+    def test_ambient_ingress_listener_port(
+        self, harness: Harness, tls_enabled, expected_port
+    ):
+        """Test the ambient ingress listener uses the correct port based on TLS setting."""
+        with patch(
+            "charm.IstioIngressRouteRequirer.tls_enabled",
+            new_callable=PropertyMock,
+            return_value=tls_enabled,
+        ), patch("charm.IstioIngressRouteRequirer.submit_config") as mock_submit:
+            harness.begin()
+
+        mock_submit.assert_called_once()
+        config = mock_submit.call_args[0][0]
+        assert len(config.listeners) == 1
+        assert config.listeners[0].port == expected_port
+        assert config.listeners[0].protocol == ProtocolType.HTTP
 
     # Helper functions
     def _setup_ingress_relation(self, harness: Harness):
