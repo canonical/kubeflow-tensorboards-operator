@@ -4,10 +4,10 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 import yaml
+from charms.istio_ingress_k8s.v0.istio_ingress_route import ProtocolType
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, WaitingStatus
 from ops.testing import Harness
 
-from charms.istio_ingress_k8s.v0.istio_ingress_route import ProtocolType
 from charm import TensorboardsWebApp
 
 APP_NAME = "tensorboards-web-app"
@@ -131,9 +131,7 @@ class TestCharm:
     @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
     @patch("charm.TensorboardsWebApp.k8s_resource_handler", MagicMock)
     @patch("charm.ServiceMeshConsumer", MagicMock)
-    def test_ambient_ingress_listener_port(
-        self, harness: Harness, tls_enabled, expected_port
-    ):
+    def test_ambient_ingress_listener_port(self, harness: Harness, tls_enabled, expected_port):
         """Test the ambient ingress listener uses the correct port based on TLS setting."""
         with patch(
             "charm.IstioIngressRouteRequirer.tls_enabled",
