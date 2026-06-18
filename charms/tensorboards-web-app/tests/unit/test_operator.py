@@ -127,6 +127,23 @@ class TestCharm:
             BlockedStatus,
         )
 
+    @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
+    @patch("charm.TensorboardsWebApp.k8s_resource_handler")
+    def test_multiple_ambient_relations_added(
+        self, k8s_resource_handler: MagicMock, harness: Harness
+    ):
+        """Test that multiple istio-ingress-route relations are handled without erroring."""
+        # Arrange
+        harness.add_relation("istio-ingress-route", "istio-ingress-k8s")
+        harness.add_relation("istio-ingress-route", "istio-ingress-k8s-2")
+
+        # Act
+        harness.begin_with_initial_hooks()
+
+        # Assert: with only ambient relations and no conflicting sidecar relation,
+        # the charm is configured for every ambient relation and becomes active.
+        assert isinstance(harness.charm.model.unit.status, ActiveStatus)
+
     @pytest.mark.parametrize("tls_enabled, expected_port", [(False, 80), (True, 443)])
     @patch("charm.KubernetesServicePatch", lambda x, y, service_name: None)
     @patch("charm.TensorboardsWebApp.k8s_resource_handler", MagicMock)
