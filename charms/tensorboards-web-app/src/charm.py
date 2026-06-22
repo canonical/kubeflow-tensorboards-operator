@@ -216,14 +216,26 @@ class TensorboardsWebApp(CharmBase):
             ],
         )
 
+        # submit_config publishes this same config to every istio-ingress-route
+        # relation, so all related ingress providers are (re)configured at once.
         self.ingress.submit_config(config)
 
     def _check_istio_relations(self):
-        """Check that both ambient and sidecar relations are not present simultaneously."""
-        ambient_relation = self.model.get_relation("istio-ingress-route")
-        sidecar_relation = self.model.get_relation("ingress")
+        """Validate the charm's ingress relations are mutually exclusive.
 
-        if ambient_relation and sidecar_relation:
+        The charm supports both ambient ingress (via the 'istio-ingress-route'
+        endpoint) and sidecar ingress (via the 'ingress' endpoint), but the two
+        cannot be used at the same time. Each endpoint may hold any number of relations,
+        so this inspects the full list of relations on each endpoint.
+
+        Raises:
+            ErrorWithStatus: with BlockedStatus if relations exist on both endpoints,
+                or if neither endpoint has any relation.
+        """
+        ambient_relations = self.model.relations["istio-ingress-route"]
+        sidecar_relations = self.model.relations["ingress"]
+
+        if ambient_relations and sidecar_relations:
             self.logger.error(
                 "Both 'istio-ingress-route' and 'ingress' relations are present, "
                 "remove one to unblock."
@@ -234,7 +246,7 @@ class TensorboardsWebApp(CharmBase):
                 BlockedStatus,
             )
 
-        if not ambient_relation and not sidecar_relation:
+        if not ambient_relations and not sidecar_relations:
             self.logger.error(
                 "None of 'istio-ingress-route' or 'ingress' relations are present, please relate one."
             )
