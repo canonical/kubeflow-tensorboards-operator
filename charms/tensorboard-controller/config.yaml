@@ -8,5 +8,5 @@ options:
     description: Enable leader election
   tensorboard-image:
     type: string
-    default: "docker.io/charmedkubeflow/tensorflow:2.5.1-2836bb9"
+    default: "docker.io/charmedkubeflow/tensorflow:2.5.1-04ec6e5-20260827150418"
     description: Tensorboard image used for visualizations
