@@ -16,7 +16,7 @@ resources:
     type: oci-image
     description: OCI image for Tensorboards Web App
     auto-fetch: true
-    upstream-source: docker.io/charmedkubeflow/tensorboards-web-app:1.11.0-rc.1-fda0027
+    upstream-source: docker.io/charmedkubeflow/tensorboards-web-app:1.11.0-rc.1-8918b99-20260901050258
 requires:
   istio-ingress-route:
     interface: istio_ingress_route
