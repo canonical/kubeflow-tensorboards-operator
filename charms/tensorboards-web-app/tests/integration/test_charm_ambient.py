@@ -14,9 +14,9 @@ from charmed_kubeflow_chisme.testing import (
     assert_path_reachable_through_ingress,
     assert_security_context,
     deploy_and_assert_grafana_agent,
-    deploy_and_integrate_service_mesh_charms,
     generate_container_securitycontext_map,
     get_pod_names,
+    integrate_with_service_mesh,
 )
 from lightkube import Client
 from lightkube.generic_resource import create_namespaced_resource
@@ -34,7 +34,7 @@ EXPECTED_RESPONSE_TEXT = "Tensorboards Manager UI"
 
 # A second istio-ingress-k8s instance used to verify multiple-ingress support.
 SECOND_INGRESS_APP = "istio-ingress-k8s-alt"
-INGRESS_CHANNEL = "2/stable"
+INGRESS_CHANNEL = "1.31/stable"
 # Name of the HTTPRoute submitted by tensorboards-web-app (see charm._ambient_mesh_ingress).
 INGRESS_ROUTE_NAME = "http-ingress"
 # Gateway listener section for cleartext HTTP on port 80.
@@ -84,7 +84,18 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
         trust=True,
     )
 
-    await deploy_and_integrate_service_mesh_charms(app=APP_NAME, model=ops_test.model)
+    # Use the Juju CLI because libjuju does not support the Ubuntu 26.04 base.
+    for charm, options in (
+        ("istio-k8s", ("--config", "platform=")),
+        ("istio-ingress-k8s", ()),
+        ("istio-beacon-k8s", ("--config", "model-on-mesh=true")),
+    ):
+        await ops_test.juju(
+            "deploy", charm, "--channel", INGRESS_CHANNEL, "--trust", *options, check=True
+        )
+        await ops_test.model.wait_for_idle(apps=[charm], status="active", timeout=60 * 15)
+
+    await integrate_with_service_mesh(app=APP_NAME, model=ops_test.model)
 
     # Deploying grafana-agent-k8s and add all relations
     await deploy_and_assert_grafana_agent(
@@ -144,11 +155,14 @@ async def test_deploy_and_relate_second_ingress(ops_test: OpsTest):
     tensorboards-web-app must accept more than one istio-ingress-route relation without
     erroring, so it should remain active after the second ingress is related.
     """
-    await ops_test.model.deploy(
+    await ops_test.juju(
+        "deploy",
         ISTIO_INGRESS_K8S_APP,
-        application_name=SECOND_INGRESS_APP,
-        channel=INGRESS_CHANNEL,
-        trust=True,
+        SECOND_INGRESS_APP,
+        "--channel",
+        INGRESS_CHANNEL,
+        "--trust",
+        check=True,
     )
     await ops_test.model.wait_for_idle(
         [SECOND_INGRESS_APP],

@@ -14,10 +14,10 @@ from charmed_kubeflow_chisme.testing import (
     assert_path_reachable_through_ingress,
     assert_security_context,
     deploy_and_assert_grafana_agent,
-    deploy_and_integrate_service_mesh_charms,
     generate_container_securitycontext_map,
     get_alert_rules,
     get_pod_names,
+    integrate_with_service_mesh,
 )
 from lightkube import ApiError, Client, codecs
 from lightkube.generic_resource import (
@@ -41,6 +41,7 @@ CONTAINERS_SECURITY_CONTEXT_MAP = generate_container_securitycontext_map(METADAT
 
 SERVICE_MESH_ENDPOINT = "service-mesh"
 GATEWAY_METADATA_ENDPOINT = "gateway-metadata"
+INGRESS_CHANNEL = "1.31/stable"
 
 PVC_NAME = "dummy-pvc"
 TENSORBOARD_NAME = "dummy-tensorboard"
@@ -118,7 +119,18 @@ async def test_build_and_deploy(ops_test: OpsTest, request):
 @pytest.mark.abort_on_fail
 async def test_istio_gateway_info_relation(ops_test: OpsTest):
     """Setup Istio and relate it to the Tensorboard Controller."""
-    await deploy_and_integrate_service_mesh_charms(
+    # Use the Juju CLI because libjuju does not support the Ubuntu 26.04 base.
+    for charm, options in (
+        ("istio-k8s", ("--config", "platform=")),
+        ("istio-ingress-k8s", ()),
+        ("istio-beacon-k8s", ("--config", "model-on-mesh=true")),
+    ):
+        await ops_test.juju(
+            "deploy", charm, "--channel", INGRESS_CHANNEL, "--trust", *options, check=True
+        )
+        await ops_test.model.wait_for_idle(apps=[charm], status="active", timeout=60 * 15)
+
+    await integrate_with_service_mesh(
         app=APP_NAME,
         model=ops_test.model,
         relate_to_ingress_route_endpoint=False,
