@@ -9,8 +9,8 @@ source: https://github.com/canonical/kubeflow-tensorboards-operator/
 containers:
   tensorboards-web-app:
     resource: tensorboards-web-app-image
-    # Revert to 584792/584792 when integrating the rock image.
-    uid: 1000
+    # Upstream uses UID 1000, which Juju reserves. Revert to 584792/584792 for the rock image.
+    uid: 999
     gid: 0
 resources:
   tensorboards-web-app-image:
