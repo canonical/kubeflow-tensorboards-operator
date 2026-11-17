@@ -10,13 +10,14 @@ docs: https://discourse.charmhub.io/t/charmed-tensorboard-controller/8239
 containers:
   tensorboard-controller:
     resource: tensorboard-controller-image
-    uid: 584792
-    gid: 584792
+    # Revert to 584792/584792 when integrating the rock image.
+    uid: 999
+    gid: 0
 resources:
   tensorboard-controller-image:
     type: oci-image
     description: OCI image for Tensorboard Controller
-    upstream-source: docker.io/charmedkubeflow/tensorboard-controller:1.11.0-rc.1-ambient-cea69d0
+    upstream-source: ghcr.io/kubeflow/notebooks/tensorboard-controller:v1.11.1
 requires:
   gateway-info:
     interface: istio-gateway-info
