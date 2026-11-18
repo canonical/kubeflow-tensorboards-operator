@@ -16,7 +16,11 @@ resources:
   tensorboard-controller-image:
     type: oci-image
     description: OCI image for Tensorboard Controller
+<<<<<<< HEAD
     upstream-source: docker.io/charmedkubeflow/tensorboard-controller:1.11.1-ambient-bfc9d01-20261117153841
+=======
+    upstream-source: docker.io/charmedkubeflow/tensorboard-controller:1.11.1-ambient-31d4d96-20261116103758
+>>>>>>> ff9fc3c (chore: integrate rock image tensorboard-controller:1.11.1-ambient-31d4d96-20261116103758 (#297))
 requires:
   gateway-info:
     interface: istio-gateway-info
