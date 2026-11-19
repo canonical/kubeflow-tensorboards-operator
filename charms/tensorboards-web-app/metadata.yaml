@@ -9,14 +9,15 @@ source: https://github.com/canonical/kubeflow-tensorboards-operator/
 containers:
   tensorboards-web-app:
     resource: tensorboards-web-app-image
-    uid: 584792
-    gid: 584792
+    # Upstream uses UID 1000, which Juju reserves. Revert to 584792/584792 for the rock image.
+    uid: 999
+    gid: 0
 resources:
   tensorboards-web-app-image:
     type: oci-image
     description: OCI image for Tensorboards Web App
     auto-fetch: true
-    upstream-source: docker.io/charmedkubeflow/tensorboards-web-app:1.11.0-rc.1-fda0027
+    upstream-source: ghcr.io/kubeflow/notebooks/tensorboards-web-app:v1.11.1
 requires:
   istio-ingress-route:
     interface: istio_ingress_route
